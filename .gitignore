@@ -1,0 +1,41 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# Next.js
+.next/
+out/
+
+# production
+build/
+dist/
+
+# local env
+.env
+.env.*
+!.env.example
+
+# logs and runtime data
+logs/
+*.log
+data/recordings/
+
+# TypeScript
+*.tsbuildinfo
+
+# test artifacts
+test-results/
+playwright-report/
+coverage/
+
+# Vercel
+.vercel/
+
+# local media staging
+public/videos/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

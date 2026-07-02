@@ -1,0 +1,2 @@
+ALTER TABLE "news_articles" ALTER COLUMN "published_date" SET DATA TYPE timestamp with time zone USING TO_TIMESTAMP(published_date, 'DD/MM/YYYY');--> statement-breakpoint
+ALTER TABLE "news_articles" ALTER COLUMN "published_date" SET DEFAULT now();

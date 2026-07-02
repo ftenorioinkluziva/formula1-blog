@@ -1,0 +1,231 @@
+{
+  "home": {
+    "navigation": {
+      "teams": "Equipes",
+      "drivers": "Pilotos",
+      "news": "Notícias",
+      "multimedia": "Multimídia",
+      "standings": "Classificação",
+      "schedule": "Calendário",
+      "subscribe": "Inscrever-se"
+    },
+    "sections": {
+      "teams": {
+        "label": "Classificação de Construtores",
+        "title": "As Equipes",
+        "fullStandings": "Classificação Completa"
+      },
+      "drivers": {
+        "label": "Classificação de Pilotos",
+        "title": "Os Pilotos",
+        "fullStandings": "Classificação Completa"
+      },
+      "news": {
+        "label": "Últimas Atualizações",
+        "title": "Notícias do Paddock",
+        "readAll": "Ver Todas as Notícias"
+      },
+      "multimedia": {
+        "label": "Zona de Mídia",
+        "title": "Multimídia",
+        "viewAll": "Ver Toda a Mídia"
+      },
+      "standings": {
+        "label": "Campeonato",
+        "title": "Classificação",
+        "drivers": "Pilotos",
+        "constructors": "Construtores",
+        "position": "Pos",
+        "driver": "Piloto",
+        "team": "Equipe",
+        "points": "Pontos"
+      },
+      "schedule": {
+        "label": "Calendário de Corridas",
+        "title": "Calendário",
+        "viewFull": "Ver Calendário Completo"
+      }
+    },
+    "common": {
+      "wins": "vitórias",
+      "podiums": "pódios",
+      "championships": "campeonatos",
+      "readMore": "Leia Mais",
+      "close": "Fechar",
+      "loading": "Carregando..."
+    },
+    "footer": {
+      "tagline": "Seu destino para perfis de equipes de corrida, últimas notícias e conteúdo multimídia do mundo do automobilismo.",
+      "newsletter": "Fique Atualizado",
+      "quickLinks": "Links Rápidos",
+      "followUs": "Siga-nos"
+    }
+  },
+  "fantasy": {
+    "pageTitle": "Fantasy Pitwall",
+    "pageSubtitle": "Monte sua escalação, trave antes do quali e acompanhe sua pontuação a cada rodada.",
+    "seasonLabel": "Temporada 2026",
+    "draft": {
+      "round": "Rodada",
+      "profileName": "Nome do Perfil",
+      "budgetUsage": "Uso do orçamento",
+      "budgetLeft": "{amount} restante",
+      "lockLineup": "Travar escalação",
+      "recalculateScore": "Recalcular pontuação",
+      "review": "Revisão",
+      "reviewDescription": "Estado atual da entry e elegibilidade para lock.",
+      "issues": "Problemas",
+      "readyToLock": "Pronto para travar",
+      "driversDescription": "Toque no card — metade superior = D1, inferior = D2",
+      "teamsDescription": "Selecione a estrutura da equipe para resultado agregado.",
+      "pitWallDescription": "Escolha livremente o comando de pit wall de qualquer equipe do grid."
+    },
+    "predictions": {
+      "title": "Previsões",
+      "description": "Pontuação extra por pole, vencedor, pódio, volta mais rápida, pit stop e bandeiras.",
+      "pole": "Pole",
+      "raceWinner": "Vencedor",
+      "podiumP2": "Pódio P2",
+      "podiumP3": "Pódio P3",
+      "fastestLap": "Volta Mais Rápida",
+      "fastestPitTeam": "Pit Mais Rápido",
+      "safetyCarBand": "Faixa Safety Car",
+      "redFlag": "Bandeira Vermelha",
+      "save": "Salvar previsões",
+      "select": "Selecionar..."
+    },
+    "result": {
+      "title": "Detalhamento do Score",
+      "description": "Resultado persistido da rodada e blocos de pontuação gravados.",
+      "total": "Total",
+      "official": "Oficial",
+      "drivers": "Pilotos",
+      "team": "Equipe",
+      "pitWall": "Pit Wall",
+      "emptyBlock": "Sem itens calculados neste bloco.",
+      "emptyResult": "O breakdown aparece depois do lock e do primeiro cálculo de score."
+    },
+    "leaderboard": {
+      "title": "Classificação",
+      "description": "Ranking por rodada e acumulado da temporada a partir das tabelas de score.",
+      "roundLeader": "Líder da rodada",
+      "seasonLeader": "Líder da temporada",
+      "roundStatus": "Status da rodada",
+      "noScore": "sem score",
+      "live": "Ao vivo",
+      "official": "Oficial",
+      "provisional": "Provisório",
+      "top10": "Top 10",
+      "aroundMe": "Meu entorno",
+      "yourRoundRank": "Seu rank na rodada: #{rank}",
+      "yourSeasonRank": "Seu rank na temporada: #{rank}",
+      "roundTitle": "Rodada",
+      "seasonTitle": "Temporada",
+      "notOfficialYet": "Rodada ainda não oficializada",
+      "emptyRanking": "Sem scores suficientes para montar ranking.",
+      "roundsCount": "{count} rodadas, média {avg}",
+      "liveAndOfficial": "Scores live + oficiais",
+      "officialOnly": "Apenas scores oficiais",
+      "currentRound": "rodada atual",
+      "overallRanking": "Ranking Geral",
+      "roundRanking": "Ranking da Etapa",
+      "loading": "Carregando...",
+      "allOfficialRounds": "Todas as etapas oficiais",
+      "selectRound": "Selecionar etapa"
+    },
+    "empty": {
+      "noPitWallLeads": "Nenhum Pit Wall Lead disponível no momento."
+    },
+    "rules": {
+      "pageTitle": "Como Jogar",
+      "pageSubtitle": "Tudo que você precisa saber para dominar o Fantasy Pitwall.",
+      "backToFantasy": "Voltar ao Fantasy",
+      "overview": "Visão Geral",
+      "overviewText": "A cada rodada, você monta uma escalação com 2 pilotos, 1 equipe e 1 Pit Wall Lead dentro de um orçamento de 100 créditos. Trave suas escolhas antes do qualifying, faça suas previsões e ganhe pontos com base nos resultados reais do fim de semana.",
+      "howItWorks": "Como Funciona",
+      "step1Title": "1. Escale seu time",
+      "step1Text": "Escolha 2 pilotos, 1 equipe construtora e 1 Pit Wall Lead. Mantenha-se dentro do orçamento de 100 créditos. Equipes têm hold mínimo de 3 rodadas.",
+      "step2Title": "2. Faça previsões",
+      "step2Text": "Preveja pole, vencedor, pódio exato, volta mais rápida, pit stop mais rápido, contagem de safety cars e bandeira vermelha.",
+      "step3Title": "3. Trave antes do qualifying",
+      "step3Text": "Sua escalação e previsões travam automaticamente quando o qualifying começa. Sem alterações depois disso.",
+      "step4Title": "4. Pontue",
+      "step4Text": "Pontos são calculados com dados reais — qualifying, sprint (quando há) e corrida. Scores atualizam ao vivo e tornam-se oficiais após confirmação dos resultados.",
+      "scoringTitle": "Sistema de Pontuação",
+      "scoringPhilosophy": "Cada bloco recompensa uma dimensão distinta de performance. Não há sobreposição entre blocos.",
+      "driverTitle": "Pontuação do Piloto",
+      "driverSubtitle": "Desempenho individual na pista — o que o piloto controla.",
+      "driverQualiPosition": "Posição no qualifying: P1 = 10 pts até P9-10 = 1 pt",
+      "driverQualiDsq": "DSQ/DNS no qualifying: -5 pts",
+      "driverTeammateQuali": "Bateu o teammate no qualifying: +3 pts",
+      "driverSprintPosition": "Posição na sprint: P1 = 8 pts até P8 = 1 pt",
+      "driverSprintOvertakes": "Ultrapassagens na sprint (grid→finish): até +/-4 pts",
+      "driverSprintDnf": "DNF na sprint: -5 pts",
+      "driverTeammateSprint": "Bateu o teammate na sprint: +2 pts",
+      "driverRacePosition": "Posição na corrida: P1 = 25 pts até P10 = 1 pt",
+      "driverRaceOvertakes": "Ultrapassagens na corrida (grid→finish): até +/-6 pts",
+      "driverFastestLap": "Volta mais rápida da corrida: +5 pts",
+      "driverRaceDnf": "DNF na corrida: -10 pts",
+      "driverTeammateRace": "Bateu o teammate na corrida: +4 pts",
+      "teamTitle": "Pontuação da Equipe",
+      "teamSubtitle": "Resultado coletivo e execução mecânica — ambos os carros combinados.",
+      "teamQ3One": "Um carro no Q3: +2 pts",
+      "teamQ3Both": "Dois carros no Q3: +4 pts",
+      "teamQualiDsq": "DSQ no qualifying: -3 pts",
+      "teamSprintBothFinish": "Ambos terminaram a sprint: +2 pts",
+      "teamSprintBothTop8": "Ambos no top 8 na sprint: +3 pts",
+      "teamSprintDnf": "DNF na sprint: -3 pts / double DNF: -6 pts",
+      "teamRaceBothFinish": "Ambos terminaram a corrida: +3 pts",
+      "teamRaceBothPoints": "Ambos nos pontos (top 10): +5 pts",
+      "teamRacePodium": "Pódio: +3 pts / duplo pódio: +6 pts",
+      "teamRaceWin": "Vitória: +3 pts",
+      "teamRaceDnf": "DNF na corrida: -4 pts / double DNF: -8 pts",
+      "teamPitCrewFast": "Pit rápido: <2.2s = +4, <2.5s = +2, <3.0s = +1",
+      "teamPitCrewSlow": "Pit lento (>5.0s): -3 pts",
+      "engineerTitle": "Pontuação do Pit Wall Lead",
+      "engineerSubtitle": "Decisões estratégicas — timing, reações, gestão de corrida.",
+      "engineerQualiExecution": "Estratégia de qualifying (carros no top 5): +2 / +4 pts",
+      "engineerRaceGain": "Ganho estratégico (soma grid→finish): até +/-6 pts",
+      "engineerPointsConversion": "Conversão em pontos: 2 carros nos pontos = +4, 1 carro + gain 3+ = +2",
+      "engineerPositionLost": "Estratégia perdeu posições (ambos perderam, sem DNF): -3 pts",
+      "engineerDnfPenalty": "Penalidade por DNF: -2 / double DNF: -4 pts",
+      "engineerCleanRace": "Gestão de corrida limpa (sem penalidades, ambos terminam): +2 pts",
+      "engineerUndercutOvercut": "Undercut/overcut bem-sucedido: +3 pts",
+      "engineerScWindow": "Ganho em janela de SC (pit perto do SC + posições ganhas): +4 pts",
+      "predictionsTitle": "Pontuação de Previsões",
+      "predictionsSubtitle": "Pontos bônus por acertar resultados do fim de semana.",
+      "predPole": "Acertou pole sitter: +8 pts",
+      "predWinner": "Acertou vencedor: +10 pts",
+      "predPodiumExact": "Acertou posição exata no pódio: +6 pts",
+      "predPodiumPresent": "Piloto no pódio mas posição errada: +3 pts",
+      "predFastestLap": "Acertou volta mais rápida: +5 pts",
+      "predFastestPit": "Acertou pit stop mais rápido: +4 pts",
+      "predSafetyCarBand": "Acertou faixa de safety cars (0, 1-2, 3+): +4 pts",
+      "predRedFlag": "Acertou bandeira vermelha: +3 pts",
+      "predComboPoleWinFl": "Combo: pole + vencedor + volta rápida: +5 bônus",
+      "predComboExactPodium": "Combo: pódio exato (3 corretos): +8 bônus",
+      "budgetTitle": "Orçamento & Transferências",
+      "budgetText": "Você tem 100 créditos por rodada. Preços dos ativos mudam a cada rodada com base no desempenho. Equipes têm hold mínimo de 3 rodadas — não é possível largar uma equipe em menos de 3 rodadas.",
+      "lockTitle": "Timing do Lock",
+      "lockText": "As escalações travam automaticamente no início do qualifying (Q1). Após o lock, nenhuma alteração é permitida. Certifique-se de que sua escalação e previsões estejam completas antes do countdown chegar a zero.",
+      "tipsTitle": "Dicas",
+      "tip1": "O Pit Wall Lead pontua independentemente da equipe escolhida — escolha o melhor estrategista independente do construtor.",
+      "tip2": "Bônus de undercut/overcut recompensam timing estratégico de pit relativo aos rivais, não apenas paradas rápidas.",
+      "tip3": "Combos de previsão (pole+vitória+VR e pódio exato) são alto risco, alta recompensa — aposte quando estiver confiante.",
+      "tip4": "Penalidades de DNF afetam tanto o piloto quanto a equipe — confiabilidade importa na escalação."
+    }
+  },
+  "liveTiming": {
+    "championshipPredictionCompact": {
+      "titleLive": "Previsão de Campeonato (Ao Vivo)",
+      "currentToPrediction": "atual → previsão",
+      "pointsSuffix": "pts"
+    },
+    "unused": {
+      "title": "Componentes Temporários",
+      "description": "Página de validação para componentes sem uso nas páginas principais.",
+      "sectionTitle": "Novas Visualizações — Em Validação",
+      "rawDataDescription": "Dados brutos da API ainda não expostos nas páginas principais: LapSeries · WeatherDataSeries · Segments · Speeds I1/I2/FL/ST · ChampionshipPrediction · ContentStreams · CarData.z"
+    }
+  }
+}

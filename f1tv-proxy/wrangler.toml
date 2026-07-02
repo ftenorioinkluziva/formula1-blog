@@ -1,0 +1,7 @@
+name = "f1tv-proxy"
+main = "worker.js"
+compatibility_date = "2026-05-24"
+
+[[routes]]
+pattern = "f1tv-proxy.blackboxinovacao.com.br/*"
+zone_id = "ce475b811f48380231f7d0994f9f2b60"

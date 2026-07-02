@@ -1,0 +1,251 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1764090000000,
+      "tag": "0000_create_race_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1764090001000,
+      "tag": "0001_add_weekends_and_session_status_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1764090002000,
+      "tag": "0002_add_drivers_and_session_results",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1764090003000,
+      "tag": "0003_expand_drivers_profile_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1764090004000,
+      "tag": "0004_create_teams",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1764090005000,
+      "tag": "0005_create_media_and_news",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1764090006000,
+      "tag": "0006_normalize_core_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1764090007000,
+      "tag": "0007_add_race_control_messages",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1764090008000,
+      "tag": "0008_add_lap_summaries",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1764090009000,
+      "tag": "0009_add_telemetry_snapshots",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1772056148314,
+      "tag": "0010_violet_talisman",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1772056200000,
+      "tag": "0011_rename_thumbnail_to_video_url",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1772056260000,
+      "tag": "0012_create_gallery_images",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1772056320000,
+      "tag": "0013_add_gallery_folder_key",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1772056380000,
+      "tag": "0014_add_video_thumbnail_and_folder_key",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1772474167356,
+      "tag": "0015_add_driver_image_url",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1772888833901,
+      "tag": "0016_swift_lightspeed",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1772916489596,
+      "tag": "0017_daily_catseye",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1773264000000,
+      "tag": "0018_add_session_results_extra_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1773264100000,
+      "tag": "0019_create_pit_stops",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1773264200000,
+      "tag": "0020_create_circuits",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1773350000000,
+      "tag": "0021_create_tire_stints",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1773350100000,
+      "tag": "0022_create_session_weather",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1773350200000,
+      "tag": "0023_add_lap_summaries_speed_compound",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1773436600000,
+      "tag": "0024_create_race_intervals",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1773436700000,
+      "tag": "0025_create_overtakes",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1773436800000,
+      "tag": "0026_create_car_telemetry",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1773436900000,
+      "tag": "0027_create_team_radio",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1773523300000,
+      "tag": "0028_create_pole_videos",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1773523400000,
+      "tag": "0029_drop_overtakes",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1773523500000,
+      "tag": "0030_create_fantasy_core",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1773523600000,
+      "tag": "0031_drop_fantasy_engineer_driver_dependency",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1773523700000,
+      "tag": "0032_drop_media_videos",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1743120000000,
+      "tag": "0033_create_f1tv_sync_points",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1743206400000,
+      "tag": "0034_extend_media_podcasts",
+      "breakpoints": true
+    }
+  ]
+}

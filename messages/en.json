@@ -1,0 +1,231 @@
+{
+  "home": {
+    "navigation": {
+      "teams": "Teams",
+      "drivers": "Drivers",
+      "news": "News",
+      "multimedia": "Multimedia",
+      "standings": "Standings",
+      "schedule": "Schedule",
+      "subscribe": "Subscribe"
+    },
+    "sections": {
+      "teams": {
+        "label": "Constructor Standings",
+        "title": "The Teams",
+        "fullStandings": "Full Standings"
+      },
+      "drivers": {
+        "label": "Driver Standings",
+        "title": "The Drivers",
+        "fullStandings": "Full Standings"
+      },
+      "news": {
+        "label": "Latest Updates",
+        "title": "Paddock News",
+        "readAll": "Read All News"
+      },
+      "multimedia": {
+        "label": "Media Zone",
+        "title": "Multimedia",
+        "viewAll": "View All Media"
+      },
+      "standings": {
+        "label": "Championship",
+        "title": "Standings",
+        "drivers": "Drivers",
+        "constructors": "Constructors",
+        "position": "Pos",
+        "driver": "Driver",
+        "team": "Team",
+        "points": "Points"
+      },
+      "schedule": {
+        "label": "Race Calendar",
+        "title": "Schedule",
+        "viewFull": "View Full Calendar"
+      }
+    },
+    "common": {
+      "wins": "wins",
+      "podiums": "podiums",
+      "championships": "championships",
+      "readMore": "Read More",
+      "close": "Close",
+      "loading": "Loading..."
+    },
+    "footer": {
+      "tagline": "Your destination for racing team profiles, breaking news, and multimedia content from the world of motorsport.",
+      "newsletter": "Stay Updated",
+      "quickLinks": "Quick Links",
+      "followUs": "Follow Us"
+    }
+  },
+  "fantasy": {
+    "pageTitle": "Fantasy Pitwall",
+    "pageSubtitle": "Build your lineup, lock before qualifying, and track your score each round.",
+    "seasonLabel": "Season 2026",
+    "draft": {
+      "round": "Round",
+      "profileName": "Profile Name",
+      "budgetUsage": "Budget usage",
+      "budgetLeft": "{amount} left",
+      "lockLineup": "Lock lineup",
+      "recalculateScore": "Recalculate score",
+      "review": "Review",
+      "reviewDescription": "Current entry status and lock eligibility.",
+      "issues": "Issues",
+      "readyToLock": "Ready to lock",
+      "driversDescription": "Tap the card — top half = D1, bottom half = D2",
+      "teamsDescription": "Select the team structure for aggregate results.",
+      "pitWallDescription": "Freely choose the pit wall command from any grid team."
+    },
+    "predictions": {
+      "title": "Predictions",
+      "description": "Extra points for pole, winner, podium, fastest lap, pit stop, and flags.",
+      "pole": "Pole",
+      "raceWinner": "Race Winner",
+      "podiumP2": "Podium P2",
+      "podiumP3": "Podium P3",
+      "fastestLap": "Fastest Lap",
+      "fastestPitTeam": "Fastest Pit Team",
+      "safetyCarBand": "Safety Car Band",
+      "redFlag": "Red Flag",
+      "save": "Save predictions",
+      "select": "Select..."
+    },
+    "result": {
+      "title": "Score Breakdown",
+      "description": "Persisted round result and recorded score blocks.",
+      "total": "Total",
+      "official": "Official",
+      "drivers": "Drivers",
+      "team": "Team",
+      "pitWall": "Pit Wall",
+      "emptyBlock": "No items calculated in this block.",
+      "emptyResult": "Score breakdown appears after lock & first calculation."
+    },
+    "leaderboard": {
+      "title": "Leaderboard",
+      "description": "Round and cumulative season ranking from persisted score tables.",
+      "roundLeader": "Round leader",
+      "seasonLeader": "Season leader",
+      "roundStatus": "Round status",
+      "noScore": "no score",
+      "live": "Live",
+      "official": "Official",
+      "provisional": "Provisional",
+      "top10": "Top 10",
+      "aroundMe": "Around me",
+      "yourRoundRank": "Your round rank: #{rank}",
+      "yourSeasonRank": "Your season rank: #{rank}",
+      "roundTitle": "Round",
+      "seasonTitle": "Season",
+      "notOfficialYet": "Round not yet official",
+      "emptyRanking": "Not enough scores to build ranking yet.",
+      "roundsCount": "{count} rounds, avg {avg}",
+      "liveAndOfficial": "Live + official scores",
+      "officialOnly": "Official scores only",
+      "currentRound": "current round",
+      "overallRanking": "Overall Ranking",
+      "roundRanking": "Round Ranking",
+      "loading": "Loading...",
+      "allOfficialRounds": "All official rounds",
+      "selectRound": "Select round"
+    },
+    "empty": {
+      "noPitWallLeads": "No Pit Wall Leads available at the moment."
+    },
+    "rules": {
+      "pageTitle": "How to Play",
+      "pageSubtitle": "Everything you need to dominate the Fantasy Pitwall.",
+      "backToFantasy": "Back to Fantasy",
+      "overview": "Overview",
+      "overviewText": "Each round, you build a lineup of 2 drivers, 1 team and 1 Pit Wall Lead within a budget cap of 100 credits. Lock your picks before qualifying begins, make your predictions, and earn points based on real race weekend results.",
+      "howItWorks": "How it Works",
+      "step1Title": "1. Draft your lineup",
+      "step1Text": "Pick 2 drivers, 1 constructor team, and 1 Pit Wall Lead. Stay within the 100-credit budget. Teams have a 3-round minimum hold.",
+      "step2Title": "2. Make predictions",
+      "step2Text": "Predict pole sitter, race winner, exact podium, fastest lap, fastest pit stop team, safety car count, and red flag occurrence.",
+      "step3Title": "3. Lock before qualifying",
+      "step3Text": "Your lineup and predictions lock automatically when qualifying starts. No changes after that.",
+      "step4Title": "4. Earn points",
+      "step4Text": "Points are calculated from real session data — qualifying, sprint (when applicable), and the race. Scores update live and become official once race results are confirmed.",
+      "scoringTitle": "Scoring System",
+      "scoringPhilosophy": "Each block rewards a distinct dimension of performance. There is no overlap between blocks.",
+      "driverTitle": "Driver Score",
+      "driverSubtitle": "Individual on-track performance — what the driver controls.",
+      "driverQualiPosition": "Qualifying position: P1 = 10 pts down to P9-10 = 1 pt",
+      "driverQualiDsq": "Qualifying DSQ/DNS: -5 pts",
+      "driverTeammateQuali": "Beat teammate in qualifying: +3 pts",
+      "driverSprintPosition": "Sprint position: P1 = 8 pts down to P8 = 1 pt",
+      "driverSprintOvertakes": "Sprint overtakes (grid to finish): up to +/-4 pts",
+      "driverSprintDnf": "Sprint DNF: -5 pts",
+      "driverTeammateSprint": "Beat teammate in sprint: +2 pts",
+      "driverRacePosition": "Race position: P1 = 25 pts down to P10 = 1 pt",
+      "driverRaceOvertakes": "Race overtakes (grid to finish): up to +/-6 pts",
+      "driverFastestLap": "Fastest lap of the race: +5 pts",
+      "driverRaceDnf": "Race DNF: -10 pts",
+      "driverTeammateRace": "Beat teammate in race: +4 pts",
+      "teamTitle": "Team Score",
+      "teamSubtitle": "Collective results and mechanical execution — both cars combined.",
+      "teamQ3One": "One car in Q3: +2 pts",
+      "teamQ3Both": "Both cars in Q3: +4 pts",
+      "teamQualiDsq": "Qualifying DSQ: -3 pts",
+      "teamSprintBothFinish": "Both finished sprint: +2 pts",
+      "teamSprintBothTop8": "Both top 8 in sprint: +3 pts",
+      "teamSprintDnf": "Sprint DNF: -3 pts / double DNF: -6 pts",
+      "teamRaceBothFinish": "Both finished race: +3 pts",
+      "teamRaceBothPoints": "Both in points (top 10): +5 pts",
+      "teamRacePodium": "Podium: +3 pts / double podium: +6 pts",
+      "teamRaceWin": "Race win: +3 pts",
+      "teamRaceDnf": "Race DNF: -4 pts / double DNF: -8 pts",
+      "teamPitCrewFast": "Fast pit stop: <2.2s = +4, <2.5s = +2, <3.0s = +1",
+      "teamPitCrewSlow": "Slow pit stop (>5.0s): -3 pts",
+      "engineerTitle": "Pit Wall Lead Score",
+      "engineerSubtitle": "Strategic decisions — timing, reactions, race management.",
+      "engineerQualiExecution": "Qualifying strategy (cars in top 5): +2 / +4 pts",
+      "engineerRaceGain": "Race strategy gain (grid to finish sum): up to +/-6 pts",
+      "engineerPointsConversion": "Points conversion: 2 cars in points = +4, 1 car + gain 3+ = +2",
+      "engineerPositionLost": "Strategy lost positions (both lost, no DNF): -3 pts",
+      "engineerDnfPenalty": "DNF penalty: -2 / double DNF: -4 pts",
+      "engineerCleanRace": "Clean race management (no penalties, both finish): +2 pts",
+      "engineerUndercutOvercut": "Successful undercut/overcut: +3 pts",
+      "engineerScWindow": "SC window gain (pitted near SC + gained positions): +4 pts",
+      "predictionsTitle": "Predictions Score",
+      "predictionsSubtitle": "Bonus points for correctly predicting race weekend outcomes.",
+      "predPole": "Predicted pole sitter: +8 pts",
+      "predWinner": "Predicted race winner: +10 pts",
+      "predPodiumExact": "Predicted podium position exact: +6 pts",
+      "predPodiumPresent": "Driver on podium but wrong position: +3 pts",
+      "predFastestLap": "Predicted fastest lap driver: +5 pts",
+      "predFastestPit": "Predicted fastest pit stop team: +4 pts",
+      "predSafetyCarBand": "Predicted safety car band (0, 1-2, 3+): +4 pts",
+      "predRedFlag": "Predicted red flag occurrence: +3 pts",
+      "predComboPoleWinFl": "Combo: predicted pole + winner + fastest lap: +5 bonus",
+      "predComboExactPodium": "Combo: exact podium (all 3 correct): +8 bonus",
+      "budgetTitle": "Budget & Transfers",
+      "budgetText": "You have 100 credits per round. Asset prices change each round based on performance. Teams have a 3-round minimum hold — you cannot drop a team within 3 rounds of picking it.",
+      "lockTitle": "Lock Timing",
+      "lockText": "Entries lock automatically at qualifying start (Q1). After lock, no changes are allowed. Make sure your lineup and predictions are complete before the countdown reaches zero.",
+      "tipsTitle": "Tips",
+      "tip1": "The Pit Wall Lead scores independently from your team pick — choose the best strategist regardless of constructor.",
+      "tip2": "Undercut/overcut bonuses reward strategic pit timing relative to rivals, not just fast stops.",
+      "tip3": "Prediction combos (pole+win+FL and exact podium) are high-risk, high-reward — go for them when you feel confident.",
+      "tip4": "DNF penalties hit both your driver and team scores — reliability matters when picking."
+    }
+  },
+  "liveTiming": {
+    "championshipPredictionCompact": {
+      "titleLive": "Championship Prediction (Live)",
+      "currentToPrediction": "current → predic.",
+      "pointsSuffix": "pts"
+    },
+    "unused": {
+      "title": "Temporary Components",
+      "description": "Validation page for components not used on the main pages.",
+      "sectionTitle": "New Visualizations — In Validation",
+      "rawDataDescription": "Raw API data not yet exposed on the main pages: LapSeries · WeatherDataSeries · Segments · Speeds I1/I2/FL/ST · ChampionshipPrediction · ContentStreams · CarData.z"
+    }
+  }
+}
