@@ -1,6 +1,7 @@
 import { config as loadEnv } from "dotenv"
 
 import { createTopicPendingArticle } from "./topic-article"
+import { syncNews } from "./sync-news"
 
 loadEnv({ path: ".env.local" })
 loadEnv()
@@ -118,8 +119,15 @@ async function handleCommand(chatId: number | string, command: ParsedCommand): P
         return
       }
       await sendMessage(chatId, "Gerando artigo sobre: " + topic + "...")
-      const saved = await createTopicPendingArticle(topic)
-      await sendMessage(chatId, "Artigo salvo como pendência" + (saved.id ? " [ID " + saved.id + "]" : "") + ": " + saved.title)
+      try {
+        await syncNews(50, false)
+        const saved = await createTopicPendingArticle(topic)
+        await sendMessage(chatId, `Artigo salvo como pendência [ID ${saved.id}]: ${saved.title}`)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        console.error("[tg-bot] /topic failed:", message)
+        await sendMessage(chatId, "Falha ao salvar a pendência: " + message)
+      }
       return
     }
     default:

@@ -345,6 +345,19 @@ async function notifyImportedNews(items: ImportedNews[]): Promise<void> {
   await sendTelegramMessage(lines.join("\n"))
 }
 
+export async function syncNews(maxNews = OUTPUT_LIMIT, notify = true): Promise<ImportedNews[]> {
+  const imported: ImportedNews[] = []
+  for (const source of SOURCES) {
+    imported.push(...(await processSource(source, maxNews)))
+  }
+
+  if (notify) {
+    await notifyImportedNews(imported)
+  }
+
+  return imported
+}
+
 async function listFormula1(url: string): Promise<NewsItem[]> {
   const html = await fetchHtml(url)
   const items: NewsItem[] = []
@@ -551,12 +564,7 @@ async function main(): Promise<void> {
 
   console.log(`\nF1 News Collector — máximo ${maxNews} por fonte\n`)
 
-  const imported: ImportedNews[] = []
-  for (const source of SOURCES) {
-    imported.push(...(await processSource(source, maxNews)))
-  }
-
-  await notifyImportedNews(imported)
+  const imported = await syncNews(maxNews)
   console.log(`\nConcluído. ${imported.length} notícia(s) nova(s) sincronizada(s) em ${LATEST_SYNC_FILE}.`)
 }
 

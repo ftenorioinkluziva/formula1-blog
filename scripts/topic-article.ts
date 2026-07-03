@@ -1,4 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai"
+import { readFile } from "node:fs/promises"
+import { join } from "node:path"
 import { asc, desc, eq, sql } from "drizzle-orm"
 import { config as loadEnv } from "dotenv"
 
@@ -118,6 +120,21 @@ type RelevanceCandidate = {
   matchedTerms: string[]
 }
 
+type NewsSyncItem = {
+  source?: string
+  title?: string
+  date?: string
+  excerpt?: string
+  author?: string
+  readTime?: string
+  body?: string[]
+}
+
+type NewsSyncSnapshot = {
+  syncedAt?: string
+  items?: NewsSyncItem[]
+}
+
 async function getRandomGalleryImage(): Promise<string | null> {
   const db = getDb()
   if (!db) return null
@@ -131,23 +148,58 @@ async function getRandomGalleryImage(): Promise<string | null> {
   return rows[0]?.imageUrl ?? null
 }
 
+async function readNewsSyncSnapshot(): Promise<NewsSyncItem[]> {
+  try {
+    const file = join(process.cwd(), "data", "news-sync", "latest.json")
+    const raw = await readFile(file, "utf8")
+    const parsed = JSON.parse(raw) as NewsSyncSnapshot
+    return Array.isArray(parsed.items) ? parsed.items : []
+  } catch {
+    return []
+  }
+}
+
 async function buildRelevantNewsContext(topic: string): Promise<{ text: string; sources: RelevanceCandidate[] }> {
   const db = getDb()
-  if (!db) return { text: "", sources: [] }
-
   const topicTerms = tokenizeTopic(topic)
-  const rows = await db
-    .select({
-      id: newsArticles.id,
-      title: newsArticles.title,
-      excerpt: newsArticles.excerpt,
-      category: newsArticles.category,
-      publishedDate: newsArticles.publishedDate,
-      body: newsArticles.body,
-    })
-    .from(newsArticles)
+  const [rows, snapshotItems] = await Promise.all([
+    db
+      ? db
+        .select({
+          id: newsArticles.id,
+          title: newsArticles.title,
+          excerpt: newsArticles.excerpt,
+          category: newsArticles.category,
+          publishedDate: newsArticles.publishedDate,
+          body: newsArticles.body,
+        })
+        .from(newsArticles)
+      : Promise.resolve([] as Array<{
+          id: number
+          title: string
+          excerpt: string
+          category: string
+          publishedDate: Date
+          body: string[]
+        }>),
+    readNewsSyncSnapshot(),
+  ])
 
-  const candidates = rows
+  const syncRows = snapshotItems
+    .filter((item): item is Required<Pick<NewsSyncItem, "title" | "date" | "excerpt" | "body">> & NewsSyncItem =>
+      Boolean(item.title && item.date && item.excerpt && Array.isArray(item.body) && item.body.length > 0),
+    )
+    .map((item, index) => ({
+      id: 1_000_000 + index,
+      title: item.title,
+      excerpt: item.excerpt,
+      category: item.author ?? item.source ?? "F1",
+      publishedDate: new Date(item.date!),
+      body: item.body!,
+    }))
+
+  const allRows = [...syncRows, ...rows]
+  const candidates = allRows
     .map((row) => {
       const titleScore = scoreOccurrences(row.title, topicTerms)
       const excerptScore = scoreOccurrences(row.excerpt, topicTerms)
@@ -174,7 +226,7 @@ async function buildRelevantNewsContext(topic: string): Promise<{ text: string; 
 
   const sources = candidates.slice(0, 8)
   if (sources.length === 0) {
-    const recent = rows
+    const recent = allRows
       .sort((a, b) => b.publishedDate.getTime() - a.publishedDate.getTime())
       .slice(0, 6)
       .map((row) => ({
@@ -339,6 +391,10 @@ export async function createTopicPendingArticle(topic: string): Promise<{ id: nu
     image: image ?? null,
     body: article.body,
   })
+
+  if (!id) {
+    throw new Error("Failed to persist topic article as pending item.")
+  }
 
   return { id, title: article.title }
 }
