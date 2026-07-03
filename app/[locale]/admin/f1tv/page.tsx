@@ -22,6 +22,23 @@ interface LoginResult {
   error?: string
 }
 
+async function readJsonResponse(res: Response): Promise<Record<string, unknown>> {
+  const text = await res.text()
+  if (!text.trim()) {
+    return {
+      error: `Empty response from server (${res.status})`,
+    }
+  }
+
+  try {
+    return JSON.parse(text) as Record<string, unknown>
+  } catch {
+    return {
+      error: `Non-JSON response from server (${res.status}): ${text.slice(0, 160)}`,
+    }
+  }
+}
+
 function StatusBadge({ days }: { days: number | null }) {
   if (days === null) {
     return (
@@ -74,8 +91,8 @@ export default function F1TVAdminPage() {
   const fetchStatus = useCallback(async () => {
     try {
       const res = await fetch(authEndpoint)
-      const data = await res.json()
-      setStatus(data)
+      const data = await readJsonResponse(res)
+      setStatus(data as unknown as TokenStatus)
     } catch {
       setStatus(null)
     } finally {
@@ -101,11 +118,11 @@ export default function F1TVAdminPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
-      const data = await res.json()
+      const data = await readJsonResponse(res)
       if (!res.ok || data.error) {
-        setError(data.error ?? 'Login failed')
+        setError(typeof data.error === 'string' ? data.error : 'Login failed')
       } else {
-        setResult(data as LoginResult)
+        setResult(data as unknown as LoginResult)
         setPassword('')
         setPastedToken('')
         void fetchStatus()

@@ -14,6 +14,15 @@ async function activateToken(rawCookieValue: string) {
   return activateAndPersistToken(rawCookieValue)
 }
 
+function authError(err: unknown, status = 500) {
+  return NextResponse.json(
+    {
+      error: err instanceof Error ? err.message : String(err),
+    },
+    { status },
+  )
+}
+
 export async function POST(request: NextRequest) {
   let body: Record<string, string>
   try {
@@ -36,7 +45,13 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    const { persistedEnv, persistedRedis } = await activateToken(rawCookieValue)
+    let persistedEnv = false
+    let persistedRedis = false
+    try {
+      ;({ persistedEnv, persistedRedis } = await activateToken(rawCookieValue))
+    } catch (err) {
+      return authError(err)
+    }
     return NextResponse.json({
       success: true,
       persisted: persistedEnv || persistedRedis,
@@ -65,7 +80,13 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const { persistedEnv, persistedRedis } = await activateToken(loginResult.rawCookieValue)
+  let persistedEnv = false
+  let persistedRedis = false
+  try {
+    ;({ persistedEnv, persistedRedis } = await activateToken(loginResult.rawCookieValue))
+  } catch (err) {
+    return authError(err)
+  }
 
   return NextResponse.json({
     success: true,

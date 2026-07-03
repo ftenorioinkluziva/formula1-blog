@@ -201,34 +201,47 @@ export default function AdminNewsPage() {
   const clearFeedback = () => { setError(null); setSuccess(null) }
 
   const fetchPending = useCallback(async () => {
+    setLoadingPending(true)
     try {
-      const res = await fetch(`${apiBase}/pending-articles`)
+      const res = await fetch(`${apiBase}/pending-articles`, { cache: "no-store" })
+      if (!res.ok) throw new Error("Failed to load pending articles")
       const data = await res.json()
       setPending(data.articles ?? [])
     } catch {
       setPending([])
+      setError("Erro ao carregar artigos pendentes.")
+    } finally {
+      setLoadingPending(false)
     }
   }, [apiBase])
 
   const fetchPublished = useCallback(async () => {
+    setLoadingPublished(true)
     try {
-      const res = await fetch(`${apiBase}/news`)
+      const res = await fetch(`${apiBase}/news`, { cache: "no-store" })
+      if (!res.ok) throw new Error("Failed to load published articles")
       const data = await res.json()
       setPublished(data.articles ?? [])
     } catch {
       setPublished([])
+      setError("Erro ao carregar notícias publicadas.")
+    } finally {
+      setLoadingPublished(false)
     }
   }, [apiBase])
 
   const fetchSyncedNews = useCallback(async () => {
+    setLoadingSynced(true)
     try {
-      const res = await fetch(`${apiBase}/news-sync`)
+      const res = await fetch(`${apiBase}/news-sync`, { cache: "no-store" })
+      if (!res.ok) throw new Error("Failed to load synced news")
       const data = await res.json()
       setSyncedNews(data.items ?? [])
       setSyncedAt(data.syncedAt ?? null)
     } catch {
       setSyncedNews([])
       setSyncedAt(null)
+      setError("Erro ao carregar notícias coletadas.")
     } finally {
       setLoadingSynced(false)
     }
@@ -236,15 +249,12 @@ export default function AdminNewsPage() {
 
   useEffect(() => {
     const pendingTimer = window.setTimeout(() => {
-      setLoadingPending(true)
       void fetchPending()
     }, 0)
     const publishedTimer = window.setTimeout(() => {
-      setLoadingPublished(true)
       void fetchPublished()
     }, 0)
     const syncedTimer = window.setTimeout(() => {
-      setLoadingSynced(true)
       void fetchSyncedNews()
     }, 0)
 

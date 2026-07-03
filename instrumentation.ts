@@ -1,5 +1,3 @@
-import { spawn } from "node:child_process"
-
 export async function register() {
   const isEdgeRuntime = typeof (globalThis as { EdgeRuntime?: unknown }).EdgeRuntime !== "undefined"
   if (isEdgeRuntime) {
@@ -8,32 +6,72 @@ export async function register() {
 
   await loadF1TVToken()
 
+  if (process.env.INSTRUMENTATION_WORKERS_ENABLED === "0") {
+    console.log("[instrumentation] Background workers disabled for this process")
+    return
+  }
+
+  startBackgroundWorkers()
+}
+
+function startBackgroundWorkers(): void {
   if (process.env.F1TV_AUTO_RENEW_ENABLED !== "0") {
-    const { startF1TVAutoRenewalScheduler } = await import("@/lib/f1tv/auto-renewal-scheduler")
-    startF1TVAutoRenewalScheduler()
+    void startWorker("f1tv auto-renewal", async () => {
+      const { startF1TVAutoRenewalScheduler } =
+        await importRuntime<typeof import("@/lib/f1tv/auto-renewal-scheduler")>(
+          "@/lib/f1tv/auto-renewal-scheduler",
+        )
+      startF1TVAutoRenewalScheduler()
+    })
   }
 
   if (process.env.AUTO_CONNECT_ENABLED === "1") {
-    const { startScheduler } = await import("@/lib/live-timing/scheduler")
-    startScheduler()
+    void startWorker("live timing scheduler", async () => {
+      const { startScheduler } =
+        await importRuntime<typeof import("@/lib/live-timing/scheduler")>("@/lib/live-timing/scheduler")
+      startScheduler()
+    })
   }
 
   if (process.env.AUTO_PHOTO_SYNC_ENABLED !== "0") {
-    startPhotoSyncScheduler()
+    void startWorker("photo sync scheduler", startPhotoSyncScheduler)
   }
 
   if (process.env.AUTO_POST_ROUND_ENABLED === "1") {
-    const { startFantasyPostRoundAutomation } = await import("@/lib/fantasy/post-round-automation")
-    startFantasyPostRoundAutomation()
+    void startWorker("fantasy post-round automation", async () => {
+      const { startFantasyPostRoundAutomation } =
+        await importRuntime<typeof import("@/lib/fantasy/post-round-automation")>(
+          "@/lib/fantasy/post-round-automation",
+        )
+      startFantasyPostRoundAutomation()
+    })
   }
 }
 
-function startPhotoSyncScheduler() {
+async function importRuntime<T>(specifier: string): Promise<T> {
+  const importer = new Function("specifier", "return import(specifier)") as (value: string) => Promise<T>
+  return importer(specifier)
+}
+
+async function startWorker(name: string, start: () => Promise<void>): Promise<void> {
+  setTimeout(() => {
+    start().catch((err) => {
+      console.warn(
+        `[instrumentation] ${name} failed to start:`,
+        err instanceof Error ? err.message : err,
+      )
+    })
+  }, 0)
+}
+
+async function startPhotoSyncScheduler() {
   const globalState = globalThis as typeof globalThis & { __photoSyncSchedulerStarted?: boolean }
   if (globalState.__photoSyncSchedulerStarted) {
     return
   }
   globalState.__photoSyncSchedulerStarted = true
+
+  const { spawn } = await importRuntime<typeof import("node:child_process")>("node:child_process")
 
   const child = spawn(
     "pnpm",

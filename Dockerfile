@@ -10,7 +10,7 @@ FROM base AS deps
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --network-concurrency=1 --child-concurrency=1
 
 FROM deps AS bot
 WORKDIR /app
@@ -19,13 +19,31 @@ COPY . .
 
 CMD ["pnpm", "bot:telegram"]
 
+FROM deps AS dev
+WORKDIR /app
+
+COPY . .
+
+CMD ["pnpm", "dev", "--webpack", "--hostname", "0.0.0.0"]
+
+FROM dev AS worker
+WORKDIR /app
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends chromium \
+  && rm -rf /var/lib/apt/lists/*
+
+ENV CHROME_BINARY=/usr/bin/chromium
+
+CMD ["pnpm", "exec", "tsx", "scripts/run-workers.ts"]
+
 FROM base AS builder
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-RUN pnpm build
+RUN pnpm build --webpack
 
 FROM node:22-bookworm-slim AS runner
 WORKDIR /app

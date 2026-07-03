@@ -1,15 +1,12 @@
 import "server-only"
 
+import { existsSync, readFileSync, writeFileSync } from "node:fs"
+import { resolve } from "node:path"
+
 import { setTokenDirectly } from "@/lib/f1tv/auth"
 import { saveTokenToRedis } from "@/lib/f1tv/token-store"
 
 export async function tryPersistTokenToEnv(rawCookieValue: string): Promise<boolean> {
-  const fsModule = "fs"
-  const pathModule = "path"
-  const [{ existsSync, readFileSync, writeFileSync }, { resolve }] = await Promise.all([
-    import(fsModule) as Promise<typeof import("fs")>,
-    import(pathModule) as Promise<typeof import("path")>,
-  ])
   const envPath = resolve(process.env.PWD ?? ".", ".env.local")
   if (!existsSync(envPath)) return false
 

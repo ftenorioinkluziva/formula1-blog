@@ -5,9 +5,26 @@ const withNextIntl = createNextIntlPlugin('./lib/i18n/request.ts')
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: process.platform === 'win32' ? undefined : 'standalone',
-  serverExternalPackages: ['@microsoft/signalr', 'ws'],
+  serverExternalPackages: [
+    '@elevenlabs/elevenlabs-js',
+    '@google/generative-ai',
+    '@microsoft/signalr',
+    'cloudinary',
+    'pg',
+    'redis',
+    'ws',
+  ],
   typescript: {
     ignoreBuildErrors: false,
+  },
+  webpack(config, { webpack }) {
+    config.plugins.push(
+      new webpack.IgnorePlugin({
+        resourceRegExp: /^pg-native$/,
+      }),
+    )
+
+    return config
   },
   images: {
     unoptimized: true,

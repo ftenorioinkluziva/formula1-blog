@@ -1,0 +1,34 @@
+services:
+  f1_blog:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      INSTRUMENTATION_WORKERS_ENABLED: "0"
+    entrypoint: !reset null
+    command: !reset null
+    ports: !override
+      - "3002:3000"
+
+  f1_workers:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: worker
+    container_name: f1_workers
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PHOTO_SYNC_START_DELAY_MS: "300000"
+      PHOTO_SYNC_MAX_GALLERIES: "2"
+    env_file:
+      - .env.deploy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    entrypoint: ["pnpm"]
+    command: ["exec", "tsx", "scripts/run-workers.ts"]
+    volumes:
+      - f1_blog_recordings:/app/data/recordings
+      - ./data/news-sync:/app/data/news-sync
