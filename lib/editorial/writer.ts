@@ -1,20 +1,10 @@
 import { GoogleGenerativeAI } from "@google/generative-ai"
 
-import { SourcePacket } from "./types"
+import { SourcePacket, DraftResult } from "./types"
 import { EditorialTemplate } from "./templates/base-template"
 import { resultadoGpTemplate } from "./templates/resultado-gp"
 import { noticiasTemplate } from "./templates/noticias"
 import { raioXTecnicoTemplate } from "./templates/raio-x-tecnico"
-
-export interface DraftResult {
-  title: string
-  excerpt: string
-  category: string
-  readTime: string
-  author: string
-  body: string[]
-  image: string | null
-}
 
 function getGeminiApiKey(): string {
   return process.env.GOOGLE_AI_API_KEY ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY ?? ""

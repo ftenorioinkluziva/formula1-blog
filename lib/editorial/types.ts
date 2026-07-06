@@ -156,3 +156,13 @@ export interface SourcePacket {
   coverageContext: SourcePacketCoverageContext
   sourceWarnings: string[]
 }
+
+export interface DraftResult {
+  title: string
+  excerpt: string
+  category: string
+  readTime: string
+  author: string
+  body: string[]
+  image: string | null
+}
