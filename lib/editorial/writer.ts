@@ -82,8 +82,8 @@ ${JSON.stringify(packet, null, 2)}
 OUTPUT REQUIREMENT:
 Generate the article and output ONLY a valid JSON object matching the schema below.
 Ensure you respond in Brazilian Portuguese.
-Ensure there are no internal headings, no markdown in title/excerpt, and body paragraphs are clean text.
-Write detailed, rich paragraphs rather than short, robotic sentences. Match the tone of a professional F1 chronicler.
+Ensure there is no markdown in title/excerpt. In the body array, you MUST intersperse H3 headings (starting with "### ") and detailed text paragraphs to divide the article into clear sections, matching the specified body structure.
+Write detailed, rich paragraphs (80 to 150 words per paragraph) rather than short, robotic sentences. Match the tone of a professional, passionate F1 chronicler.
 
 JSON ESCAPING RULES:
 - All strings in the JSON MUST be valid and escape-safe.
@@ -95,9 +95,13 @@ JSON Schema:
   "title": "Clean strong title",
   "excerpt": "Clean strong excerpt (strictly between 140 and 220 characters)",
   "body": [
+    "### Subtitle 1",
     "Paragraph 1 text...",
+    "### Subtitle 2",
     "Paragraph 2 text...",
+    "### Subtitle 3",
     "Paragraph 3 text...",
+    "### Subtitle 4",
     "Paragraph 4 text..."
   ]
 }`

@@ -23,12 +23,16 @@ export const noticiasTemplate: EditorialTemplate = {
     "Deve possuir comprimento estrito de 140 a 220 caracteres",
   ],
   bodyStructure: [
-    "Paragrafo 1: O lead da noticia - a informacao principal, decisao ou fato central.",
-    "Paragrafo 2: O contexto e justificativa - detalhes do anuncio, regulamento citado ou declaracoes oficiais das partes envolvidas.",
-    "Paragrafo 3: Implicacoes imediatas - proximos passos no calendario, impacto nos treinos ou reacao geral do grid.",
+    "Elemento 1: H3 heading markdown (ex: '### FIA Confirma Nova Diretiva' ou similar)",
+    "Elemento 2: O lead da noticia - a informacao principal, decisao ou fato central.",
+    "Elemento 3: H3 heading markdown (ex: '### Contexto e Repercussao' ou similar)",
+    "Elemento 4: O contexto e justificativa - detalhes do anuncio, regulamento citado ou declaracoes oficiais das partes envolvidas.",
+    "Elemento 5: H3 heading markdown (ex: '### Impacto no Grid' ou similar)",
+    "Elemento 6: Implicacoes imediatas - proximos passos no calendario, impacto nos treinos ou reacao geral do grid.",
   ],
   customInstructions: `
 Use somente os fatos descritos em recentNews e as mensagens oficiais da FIA.
 Nao deduza intencoes ou sentimentos de pilotos a menos que estejam expressos em quotes oficiais no pacote.
+Intercale cabeçalhos H3 (###) com os parágrafos de texto longos e analíticos para organizar a matéria em seções.
 `,
 }

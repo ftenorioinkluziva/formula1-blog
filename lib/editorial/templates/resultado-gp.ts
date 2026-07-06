@@ -29,15 +29,18 @@ export const resultadoGpTemplate: EditorialTemplate = {
     "Deve possuir comprimento estrito de 140 a 220 caracteres",
   ],
   bodyStructure: [
-    "Paragrafo 1: O lead da corrida - vencedor, reacao de largada, marcos historicos atingidos e o tom geral da vitoria de forma vibrante.",
-    "Paragrafo 2: O podio e disputas de topo - a dinamica de ritmo de corrida entre o top 3 e batalhas na lideranca.",
-    "Paragrafo 3: A evolucao do top 10 e abandonos - pilotos que ganharam posicoes significativas, incidentes de corrida e abandonos (DNFs) detalhados.",
-    "Paragrafo 4: Classificacao Final Oficial - Uma lista markdown ou tabela formatada contendo a ordem completa das posicoes de chegada oficiais (ex: P1. Piloto [Equipe] - X pts, P2. Piloto [Equipe] - Y pts...).",
+    "Elemento 1: H3 heading markdown (ex: '### Vitória de Kimi Antonelli' ou similar)",
+    "Elemento 2: O lead da corrida - vencedor, reacao de largada, marcos historicos atingidos e o tom geral da vitoria de forma vibrante e aprofundada.",
+    "Elemento 3: H3 heading markdown (ex: '### A Disputa no Topo' ou similar)",
+    "Elemento 4: O podio e disputas de topo - a dinamica de ritmo de corrida entre o top 3 e batalhas na lideranca.",
+    "Elemento 5: H3 heading markdown (ex: '### Desgaste de Pneus e Abandonos' ou similar)",
+    "Elemento 6: A evolucao do top 10 e abandonos - pilotos que ganharam posicoes significativas, incidentes de corrida e abandonos (DNFs) detalhados.",
+    "Elemento 7: H3 heading markdown (ex: '### Classificação Final Oficial' ou similar)",
+    "Elemento 8: Classificacao Final Oficial - Uma lista markdown ou tabela formatada contendo a ordem completa das posicoes de chegada oficiais (ex: P1. Piloto [Equipe] - X pts, P2. Piloto [Equipe] - Y pts...).",
   ],
   customInstructions: `
 Escreva uma cronica esportiva rica, com vocabulario automobilistico detalhado e interessante.
-Evite construcoes de frases repetitivas ou simplistas. 
-O ultimo paragrafo deve ser a tabela/lista markdown dos resultados de chegada.
+Intercale cabeçalhos H3 (iniciando com ###) com os parágrafos de texto longos e analíticos para organizar a matéria em seções.
 
 REGRAS DE CONTEXTO DO REGULAMENTO OFICIAL (formula1.com):
 - A corrida Sprint (de sabado) NAO define o grid de largada da corrida de domingo. O grid do Grande Premio de domingo e definido pela sessao de Qualifying.
