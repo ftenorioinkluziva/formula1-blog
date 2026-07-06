@@ -246,6 +246,13 @@
       "when": 1743206400000,
       "tag": "0034_extend_media_podcasts",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1773523800000,
+      "tag": "0035_editorial_automation",
+      "breakpoints": true
     }
   ]
 }

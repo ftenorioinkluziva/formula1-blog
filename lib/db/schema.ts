@@ -366,6 +366,7 @@ export const newsArticles = pgTable(
     imageUrl: text("image_url"),
     isFeatured: boolean("is_featured").notNull().default(false),
     sortOrder: integer("sort_order").notNull().default(0),
+    locale: text("locale").notNull().default("pt"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
@@ -375,6 +376,7 @@ export const newsArticles = pgTable(
   (table) => ({
     featuredIdx: index("news_articles_featured_idx").on(table.isFeatured),
     sortOrderIdx: index("news_articles_sort_order_idx").on(table.sortOrder),
+    localeIdx: index("news_articles_locale_idx").on(table.locale),
   }),
 )
 
@@ -395,6 +397,19 @@ export const pendingArticles = pgTable(
     image: text("image"),
     body: text("body").array().notNull(),
     status: text("status").notNull().default("pending"),
+    assignmentType: text("assignment_type"),
+    editorialDesk: text("editorial_desk"),
+    season: integer("season"),
+    round: integer("round"),
+    sessionId: integer("session_id"),
+    reviewStatus: text("review_status"),
+    confidenceScore: real("confidence_score"),
+    sourcePacketId: integer("source_packet_id"),
+    newsArticleId: integer("news_article_id"),
+    locale: text("locale").notNull().default("pt"),
+    overrideReason: text("override_reason"),
+    overrideAt: timestamp("override_at", { withTimezone: true }),
+    overrideBy: text("override_by"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
@@ -404,6 +419,8 @@ export const pendingArticles = pgTable(
   (table) => ({
     statusIdx: index("pending_articles_status_idx").on(table.status),
     filenameUniqueIdx: uniqueIndex("pending_articles_filename_unique_idx").on(table.filename),
+    localeIdx: index("pending_articles_locale_idx").on(table.locale),
+    assignmentIdx: index("pending_articles_assignment_idx").on(table.sessionId, table.assignmentType),
   }),
 )
 
@@ -926,6 +943,96 @@ export const fantasyScoreItems = pgTable(
     blockTypeIdx: index("fantasy_score_items_block_type_idx").on(table.scoreBlock, table.scoreType),
   }),
 )
+export const editorialAssignments = pgTable(
+  "editorial_assignments",
+  {
+    id: serial("id").primaryKey(),
+    source: text("source").notNull(),
+    rawInput: text("raw_input").notNull(),
+    topicCanonical: text("topic_canonical").notNull(),
+    assignmentType: text("assignment_type").notNull(),
+    editorialDesk: text("editorial_desk").notNull(),
+    season: integer("season"),
+    round: integer("round"),
+    sessionId: integer("session_id").references(() => raceSessions.id, { onDelete: "set null" }),
+    status: text("status").notNull().default("new"),
+    confidenceScore: real("confidence_score"),
+    locale: text("locale").notNull().default("pt"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    errorLog: text("error_log"),
+    lockedAt: timestamp("locked_at", { withTimezone: true }),
+    lockedBy: text("locked_by"),
+    sourceEventKey: text("source_event_key"),
+    newsArticleId: integer("news_article_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => sql`now()`),
+  },
+  (table) => ({
+    statusIdx: index("editorial_assignments_status_idx").on(table.status),
+    nextAttemptIdx: index("editorial_assignments_next_attempt_idx").on(table.status, table.nextAttemptAt),
+    sessionIdx: index("editorial_assignments_session_idx").on(table.sessionId),
+  })
+)
+
+export const editorialSourcePackets = pgTable(
+  "editorial_source_packets",
+  {
+    id: serial("id").primaryKey(),
+    assignmentId: integer("assignment_id")
+      .notNull()
+      .references(() => editorialAssignments.id, { onDelete: "cascade" }),
+    packetJson: jsonb("packet_json").$type<Record<string, unknown>>().notNull(),
+    packetHash: text("packet_hash").notNull(),
+    sourceSummary: text("source_summary").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    assignmentIdx: index("editorial_source_packets_assignment_idx").on(table.assignmentId),
+  })
+)
+
+export const editorialReviews = pgTable(
+  "editorial_reviews",
+  {
+    id: serial("id").primaryKey(),
+    assignmentId: integer("assignment_id")
+      .notNull()
+      .references(() => editorialAssignments.id, { onDelete: "cascade" }),
+    pendingArticleId: integer("pending_article_id").references(() => pendingArticles.id, { onDelete: "set null" }),
+    reviewType: text("review_type").notNull(),
+    status: text("status").notNull(),
+    score: real("score"),
+    issuesJson: jsonb("issues_json").$type<unknown[]>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    assignmentIdx: index("editorial_reviews_assignment_idx").on(table.assignmentId),
+    pendingArticleIdx: index("editorial_reviews_pending_article_idx").on(table.pendingArticleId),
+  })
+)
+
+export const articleSourceLinks = pgTable(
+  "article_source_links",
+  {
+    id: serial("id").primaryKey(),
+    pendingArticleId: integer("pending_article_id")
+      .notNull()
+      .references(() => pendingArticles.id, { onDelete: "cascade" }),
+    sourceType: text("source_type").notNull(),
+    sourceRef: text("source_ref").notNull(),
+    sourceLabel: text("source_label").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    pendingArticleIdx: index("article_source_links_pending_article_idx").on(table.pendingArticleId),
+  })
+)
 
 export type RaceInterval = typeof raceIntervals.$inferSelect
 export type CarTelemetry = typeof carTelemetry.$inferSelect
@@ -943,3 +1050,8 @@ export type FantasyTransfer = typeof fantasyTransfers.$inferSelect
 export type FantasyPrediction = typeof fantasyPredictions.$inferSelect
 export type FantasyRoundScore = typeof fantasyRoundScores.$inferSelect
 export type FantasyScoreItem = typeof fantasyScoreItems.$inferSelect
+export type EditorialAssignment = typeof editorialAssignments.$inferSelect
+export type EditorialSourcePacket = typeof editorialSourcePackets.$inferSelect
+export type EditorialReview = typeof editorialReviews.$inferSelect
+export type ArticleSourceLink = typeof articleSourceLinks.$inferSelect
+

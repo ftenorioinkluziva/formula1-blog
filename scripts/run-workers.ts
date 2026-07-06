@@ -114,7 +114,7 @@ async function main() {
     startFantasyPostRoundAutomation()
   }
 
-  if (process.env.AUTO_PHOTO_SYNC_ENABLED !== "0") {
+  if (process.env.AUTO_PHOTO_SYNC_ENABLED === "1") {
     const delayMs = numericEnv("PHOTO_SYNC_START_DELAY_MS", 0)
 
     if (delayMs > 0) {
@@ -125,7 +125,7 @@ async function main() {
     }
   }
 
-  if (process.env.AUTO_TOPIC_SYNC_ENABLED !== "0") {
+  if (process.env.AUTO_TOPIC_SYNC_ENABLED === "1") {
     const delayMs = numericEnv("TOPIC_SYNC_START_DELAY_MS", 30_000)
 
     if (delayMs > 0) {

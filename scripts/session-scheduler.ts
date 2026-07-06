@@ -2,12 +2,12 @@ import { execFile } from "node:child_process"
 import fs from "node:fs/promises"
 import path from "node:path"
 import { promisify } from "node:util"
-import { and, desc, eq, gte, lte, ne } from "drizzle-orm"
+import { and, desc, eq, gte, lte, ne, or } from "drizzle-orm"
 import { config as loadEnv } from "dotenv"
 
 import { getDb } from "../lib/db/client"
-import { raceSessions, raceWeekends } from "../lib/db/schema"
-import { createTopicPendingArticle } from "./topic-article"
+import { raceSessions, raceWeekends, editorialAssignments, pendingArticles } from "../lib/db/schema"
+import { runEditorialPipeline } from "../lib/editorial/pipeline"
 
 loadEnv({ path: ".env.local" })
 loadEnv()
@@ -56,6 +56,8 @@ type SessionInfo = {
   status: string
   startTimeUtc: Date
   endTimeUtc: Date
+  season: number
+  round: number
 }
 
 type Args = {
@@ -173,6 +175,8 @@ async function listEndedSessions(historyDays: number): Promise<SessionInfo[]> {
       status: raceSessions.status,
       startTimeUtc: raceSessions.startTimeUtc,
       endTimeUtc: raceSessions.endTimeUtc,
+      season: raceWeekends.season,
+      round: raceWeekends.round,
     })
     .from(raceSessions)
     .innerJoin(raceWeekends, eq(raceSessions.weekendId, raceWeekends.id))
@@ -303,46 +307,146 @@ async function runPhotoJobs(state: SchedulerState, sessions: SessionInfo[], args
   }
 }
 
+function getAssignmentTypeForSession(sessionType: string): string | null {
+  if (sessionType === "Race") return "race_result"
+  if (sessionType === "Qualifying" || sessionType === "Sprint Qualifying" || sessionType === "Sprint Shootout") {
+    return "qualifying_result"
+  }
+  if (sessionType === "Sprint") return "sprint_result"
+  return null
+}
+
 async function runTopicJobs(state: SchedulerState, sessions: SessionInfo[], args: Args): Promise<void> {
-  const due = dueJobs(state, sessions, "topic", args.topicDelayMinutes, args.topicWindowHours, args.topicMaxAttempts)
-  if (due.length === 0) {
-    console.log("[topic] Nenhuma sessao elegivel para artigo por topico.")
+  const db = getDb()
+  if (!db) {
+    console.log("[topic] Sem conexao com banco de dados.")
     return
   }
 
+  // 1. Ensure assignments exist in DB for ended sessions
+  for (const session of sessions) {
+    const assignmentType = getAssignmentTypeForSession(session.sessionType)
+    if (!assignmentType) continue
+
+    const existing = await db
+      .select()
+      .from(editorialAssignments)
+      .where(
+        and(
+          eq(editorialAssignments.sessionId, session.sessionId),
+          eq(editorialAssignments.assignmentType, assignmentType)
+        )
+      )
+      .limit(1)
+
+    if (existing.length === 0) {
+      const canonical = topicName(session)
+      const firstTryAt = addMinutes(session.endTimeUtc, args.topicDelayMinutes)
+      console.log(`[topic] Criando novo assignment de pauta no banco para ${canonical} (${assignmentType}). Proxima tentativa: ${firstTryAt.toISOString()}`)
+      
+      if (!args.dryRun) {
+        await db.insert(editorialAssignments).values({
+          source: "scheduler",
+          rawInput: canonical,
+          topicCanonical: canonical,
+          assignmentType,
+          editorialDesk: "Noticias",
+          season: session.season,
+          round: session.round,
+          sessionId: session.sessionId,
+          status: "new",
+          locale: "pt",
+          attemptCount: 0,
+          nextAttemptAt: firstTryAt,
+        })
+      }
+    }
+  }
+
+  // 2. Fetch assignments that are due
   const now = new Date()
-  for (const { session, job } of due) {
-    const topic = topicName(session)
-    console.log(`[topic] Gerando artigo para ${topic}...`)
+  const due = await db
+    .select()
+    .from(editorialAssignments)
+    .where(
+      and(
+        or(
+          eq(editorialAssignments.status, "new"),
+          eq(editorialAssignments.status, "retrying")
+        ),
+        lte(editorialAssignments.nextAttemptAt, now)
+      )
+    )
+    .orderBy(desc(editorialAssignments.createdAt))
+
+  if (due.length === 0) {
+    console.log("[topic] Nenhum assignment editorial pendente na fila.")
+    return
+  }
+
+  console.log(`[topic] Encontrados ${due.length} assignments elegiveis para execucao.`)
+
+  for (const assignment of due) {
+    console.log(`[topic] Processando assignment ${assignment.id}: ${assignment.topicCanonical}...`)
     if (args.dryRun) continue
 
-    markAttempt(job, now)
+    // Mark attempt and lock
+    const attempt = assignment.attemptCount + 1
+    await db
+      .update(editorialAssignments)
+      .set({
+        attemptCount: attempt,
+        lastAttemptAt: now,
+        lockedAt: now,
+        lockedBy: "scheduler",
+      })
+      .where(eq(editorialAssignments.id, assignment.id))
+
     try {
-      const saved = await createTopicPendingArticle(topic)
-      job.status = "done"
-      job.completedAt = now.toISOString()
-      job.lastResult = `Artigo salvo${saved.id ? ` [ID ${saved.id}]` : ""}: ${saved.title}`
-      console.log(`[topic] Concluido para ${topic}: ${saved.title}`)
+      // Execute the unified editorial pipeline
+      const res = await runEditorialPipeline(assignment.id)
+      console.log(`[topic] Concluido para assignment ${assignment.id}. Status: ${res.status}. Mensagem: ${res.message}`)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       const nextAttemptAt = addMinutes(now, args.topicRetryMinutes)
-      const expiresAt = addHours(session.endTimeUtc, args.topicWindowHours)
+      const expiresAt = addHours(assignment.createdAt, args.topicWindowHours)
 
-      if (job.attemptCount >= args.topicMaxAttempts) {
-        job.status = "failed"
-        job.completedAt = now.toISOString()
-        job.lastResult = `Falhou apos ${job.attemptCount} tentativas: ${message}`
-        console.log(`[topic] Falha definitiva para ${topic}: ${message}`)
-      } else if (nextAttemptAt > expiresAt) {
-        job.status = "expired"
-        job.completedAt = now.toISOString()
-        job.lastResult = `Janela de tentativa expirada para topico: ${message}`
-        console.log(`[topic] Expirado para ${topic}: ${message}`)
+      if (attempt >= args.topicMaxAttempts) {
+        await db
+          .update(editorialAssignments)
+          .set({
+            status: "failed",
+            completedAt: now,
+            lockedAt: null,
+            lockedBy: null,
+            errorLog: `Falhou apos ${attempt} tentativas: ${message}`,
+          })
+          .where(eq(editorialAssignments.id, assignment.id))
+        console.log(`[topic] Falha definitiva para assignment ${assignment.id}: ${message}`)
+      } else if (now > expiresAt) {
+        await db
+          .update(editorialAssignments)
+          .set({
+            status: "failed",
+            completedAt: now,
+            lockedAt: null,
+            lockedBy: null,
+            errorLog: `Janela de tentativa expirada: ${message}`,
+          })
+          .where(eq(editorialAssignments.id, assignment.id))
+        console.log(`[topic] Expirado para assignment ${assignment.id}: ${message}`)
       } else {
-        job.status = "retrying"
-        job.nextAttemptAt = nextAttemptAt.toISOString()
-        job.lastResult = `Falha temporaria: ${message}`
-        console.log(`[topic] Retry agendado para ${topic} em ${nextAttemptAt.toISOString()}.`)
+        await db
+          .update(editorialAssignments)
+          .set({
+            status: "retrying",
+            nextAttemptAt,
+            lockedAt: null,
+            lockedBy: null,
+            errorLog: `Falha temporaria: ${message}`,
+          })
+          .where(eq(editorialAssignments.id, assignment.id))
+        console.log(`[topic] Retry agendado para assignment ${assignment.id} em ${nextAttemptAt.toISOString()}: ${message}`)
       }
     }
   }
