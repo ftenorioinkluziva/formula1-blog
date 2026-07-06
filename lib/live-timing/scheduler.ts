@@ -3,7 +3,6 @@ import "server-only"
 import { getDb } from "@/lib/db/client"
 import { raceSessions, raceWeekends } from "@/lib/db/schema"
 import { and, gt, ne, asc, eq, lte } from "drizzle-orm"
-import { LIVE_TIMING_SOURCE } from "@/lib/live-timing/constants"
 
 const CHECK_INTERVAL_MS = 5 * 60 * 1000
 const PRE_SESSION_LEAD_MS = 60 * 60 * 1000
@@ -137,7 +136,6 @@ async function check(): Promise<void> {
 
 export function startScheduler(): void {
   if (state.running) return
-  if (LIVE_TIMING_SOURCE !== "signalr") return
   if (process.env.AUTO_CONNECT_ENABLED !== "1") return
 
   state.running = true

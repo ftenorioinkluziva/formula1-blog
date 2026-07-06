@@ -17,16 +17,16 @@ export function ConnectionStatus() {
       <div className="flex items-start gap-3">
         <div className="text-orange-500 text-2xl">⚠️</div>
         <div className="flex-1">
-          <h3 className="text-orange-400 font-bold mb-1">Servidor de Live Timing não conectado</h3>
+          <h3 className="text-orange-400 font-bold mb-1">Live Timing não conectado</h3>
           <p className="text-foreground/80 text-sm mb-2">
-            Não foi possível conectar ao F1 MultiViewer em <code className="text-orange-300 bg-background/30 px-1 rounded">localhost:10101</code>
+            Não há snapshot recente do SignalR disponível para esta sessão.
           </p>
           <div className="text-xs text-muted-foreground space-y-1">
             <p>Para usar o Live Timing:</p>
             <ol className="list-decimal list-inside space-y-1 ml-2">
-              <li>Baixe e instale o <strong className="text-foreground">F1 MultiViewer</strong></li>
-              <li>Execute o MultiViewer durante uma sessão de F1</li>
-              <li>Verifique se a API está em <code className="bg-background/30 px-1 rounded">http://localhost:10101/api/graphql</code></li>
+              <li>Confirme que existe uma sessão de F1 ao vivo ou prestes a começar</li>
+              <li>Verifique se <code className="bg-background/30 px-1 rounded">AUTO_CONNECT_ENABLED=1</code> está configurado no servidor</li>
+              <li>Consulte <code className="bg-background/30 px-1 rounded">/{`{locale}`}/api/f1tv/status</code> para o estado do SignalR</li>
             </ol>
           </div>
         </div>

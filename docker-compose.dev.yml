@@ -1,0 +1,130 @@
+name: f1blog-dev
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: f1blog_dev_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: f1blog_user
+      POSTGRES_PASSWORD: vA29HAUabVbIVs15OpqhAVXKNvaDqk7B
+      POSTGRES_DB: f1blog
+    volumes:
+      - f1blog_dev_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U f1blog_user -d f1blog"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  f1_blog:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    container_name: f1blog_dev_app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env.local
+    environment:
+      DATABASE_URL: postgresql://f1blog_user:vA29HAUabVbIVs15OpqhAVXKNvaDqk7B@postgres:5432/f1blog?sslmode=disable
+      INSTRUMENTATION_WORKERS_ENABLED: "0"
+      NEXT_TELEMETRY_DISABLED: "1"
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "3010:3000"
+    volumes:
+      - .:/app
+      - f1blog_dev_node_modules:/app/node_modules
+      - f1blog_dev_pnpm_store:/pnpm/store
+      - f1blog_dev_next:/app/.next
+      - f1blog_dev_recordings:/app/data/recordings
+      - ./data/news-sync:/app/data/news-sync
+    command:
+      - sh
+      - -lc
+      - |
+        if [ ! -d node_modules/.pnpm ]; then
+          pnpm install --frozen-lockfile --network-concurrency=1 --child-concurrency=1
+        fi
+        pnpm dev --webpack --hostname 0.0.0.0 --port 3000
+
+  f1_workers:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: worker
+    container_name: f1blog_dev_workers
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env.local
+    environment:
+      DATABASE_URL: postgresql://f1blog_user:vA29HAUabVbIVs15OpqhAVXKNvaDqk7B@postgres:5432/f1blog?sslmode=disable
+      PHOTO_SYNC_START_DELAY_MS: "300000"
+      PHOTO_SYNC_MAX_GALLERIES: "2"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - .:/app
+      - f1blog_dev_node_modules:/app/node_modules
+      - f1blog_dev_pnpm_store:/pnpm/store
+      - f1blog_dev_recordings:/app/data/recordings
+      - ./data/news-sync:/app/data/news-sync
+    command:
+      - sh
+      - -lc
+      - |
+        if [ ! -d node_modules/.pnpm ]; then
+          pnpm install --frozen-lockfile --network-concurrency=1 --child-concurrency=1
+        fi
+        pnpm exec tsx scripts/run-workers.ts
+
+  telegram_bot:
+    profiles:
+      - bot
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    container_name: f1blog_dev_telegram_bot
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env.local
+    environment:
+      DATABASE_URL: postgresql://f1blog_user:vA29HAUabVbIVs15OpqhAVXKNvaDqk7B@postgres:5432/f1blog?sslmode=disable
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - .:/app
+      - f1blog_dev_node_modules:/app/node_modules
+      - f1blog_dev_pnpm_store:/pnpm/store
+      - ./data/news-sync:/app/data/news-sync
+    command:
+      - sh
+      - -lc
+      - |
+        if [ ! -d node_modules/.pnpm ]; then
+          pnpm install --frozen-lockfile --network-concurrency=1 --child-concurrency=1
+        fi
+        pnpm bot:telegram
+
+volumes:
+  f1blog_dev_node_modules:
+  f1blog_dev_pnpm_store:
+  f1blog_dev_next:
+  f1blog_dev_recordings:
+  f1blog_dev_postgres_data:

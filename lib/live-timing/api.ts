@@ -1,5 +1,4 @@
 import type { F1LiveTimingRawState } from "./types"
-import { GQL_ENDPOINT } from "./constants"
 
 const SUPPORTED_LOCALES = new Set(["pt", "en", "es"])
 const CLIENT_RESPONSE_CACHE_MS = 250
@@ -161,48 +160,8 @@ export async function fetchLiveTiming(): Promise<F1LiveTimingRawState | null> {
         return null
       }
 
-      const res = await fetch(GQL_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          query: `{ f1LiveTimingState {
-            DriverList TimingData TimingAppData TimingStats
-            WeatherData WeatherDataSeries SessionInfo SessionStatus ExtrapolatedClock TopThree TrackStatus
-            RaceControlMessages TeamRadio LapCount LapSeries Position
-            PitLaneTimeCollection ChampionshipPrediction
-            ContentStreams AudioStreams SessionData
-          }
-          f1LiveTimingClock { paused systemTime trackTime liveTimingStartTime }
-          }`,
-        }),
-      })
-
-      if (!res.ok) {
-        if (isTemporaryUnavailable(res.status)) {
-          registerUnavailable(Date.now())
-        }
-        return null
-      }
-
-      const text = await res.text()
-
-      try {
-        const json = JSON.parse(text)
-        const state = json.data?.f1LiveTimingState || null
-        const clock = json.data?.f1LiveTimingClock || null
-        const data = state ? { ...state, LiveTimingClock: clock } : null
-        if (data) {
-          lastResolvedData = data
-          lastResolvedAt = Date.now()
-          clearUnavailable()
-        } else {
-          registerUnavailable(Date.now())
-        }
-        return data
-      } catch {
-        registerUnavailable(Date.now())
-        return null
-      }
+      registerUnavailable(Date.now())
+      return null
     } catch {
       registerUnavailable(Date.now())
       return null

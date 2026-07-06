@@ -225,10 +225,14 @@ function dueJobs(
   return due.sort((a, b) => a.session.endTimeUtc.getTime() - b.session.endTimeUtc.getTime())
 }
 
-function parsePhotoOutput(output: string): { newImages: number; totalProcessed: number } {
+function parsePhotoOutput(output: string): { newImages: number; totalProcessed: number; noPending: boolean } {
   const newImages = Number(output.match(/Novas imagens baixadas:\s*(\d+)/)?.[1] ?? 0)
   const totalProcessed = Number(output.match(/Total processado:\s*(\d+)/)?.[1] ?? 0)
-  return { newImages, totalProcessed }
+  const noPending =
+    /0 galeria\(s\) pendente\(s\)/i.test(output) ||
+    /Nenhuma galeria nova encontrada/i.test(output) ||
+    /Galerias sincronizadas:\s*0/i.test(output)
+  return { newImages, totalProcessed, noPending }
 }
 
 function markAttempt(job: SchedulerJob, now: Date): void {
@@ -268,12 +272,12 @@ async function runPhotoJobs(state: SchedulerState, sessions: SessionInfo[], args
   )
 
   if (result.output.trim()) console.log(result.output.trim())
-  const { newImages, totalProcessed } = parsePhotoOutput(result.output)
-  const success = result.returnCode === 0 && totalProcessed > 0
+  const { newImages, totalProcessed, noPending } = parsePhotoOutput(result.output)
+  const success = result.returnCode === 0 && (totalProcessed > 0 || noPending)
 
   for (const { session, job } of due) {
     markAttempt(job, now)
-    const summary = `rc=${result.returnCode}, novas=${newImages}, total=${totalProcessed}`
+    const summary = `rc=${result.returnCode}, novas=${newImages}, total=${totalProcessed}, semPendencias=${noPending}`
 
     if (success) {
       job.status = "done"

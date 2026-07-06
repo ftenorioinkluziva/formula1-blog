@@ -91,7 +91,7 @@ export function TeamRadioList() {
               ⚠️ Sem dados de rádio
             </div>
             <div className="text-xs text-muted-foreground/80">
-              Verifique se o servidor de Live Timing está rodando em localhost:10101
+              Aguardando dados de rádio do SignalR para esta sessão.
             </div>
           </div>
         ) : (

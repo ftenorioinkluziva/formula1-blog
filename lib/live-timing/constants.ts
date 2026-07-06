@@ -1,10 +1,3 @@
-export const GQL_ENDPOINT = process.env.F1MV_API_URL ?? "http://localhost:10101/api/graphql"
-
-export type LiveTimingSource = 'f1mv' | 'signalr'
-
-export const LIVE_TIMING_SOURCE: LiveTimingSource =
-  (process.env.LIVE_TIMING_SOURCE as LiveTimingSource) || 'signalr'
-
 export const COMPOUND_COLORS: Record<string, string> = {
   SOFT: "#e10600",        // 🔴 Vermelho - Macio (melhor aderência, desgaste rápido)
   MEDIUM: "#ffd12e",      // 🟡 Amarelo - Médio (equilíbrio desempenho/durabilidade)

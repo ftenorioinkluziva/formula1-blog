@@ -1,11 +1,11 @@
 import { GoogleGenerativeAI } from "@google/generative-ai"
 import { readFile } from "node:fs/promises"
 import { join } from "node:path"
-import { asc, desc, eq, sql } from "drizzle-orm"
+import { and, asc, desc, eq, sql } from "drizzle-orm"
 import { config as loadEnv } from "dotenv"
 
 import { getDb } from "../lib/db/client"
-import { drivers, galleryImages, newsArticles, raceWeekends, teams } from "../lib/db/schema"
+import { drivers, galleryImages, mediaGalleries, newsArticles, raceSessions, raceWeekends, sessionResults, teams } from "../lib/db/schema"
 import { upsertImportedPendingArticle } from "../lib/db/pending-articles"
 
 loadEnv({ path: ".env.local" })
@@ -92,6 +92,22 @@ function tokenizeTopic(topic: string): string[] {
   return Array.from(new Set(tokens))
 }
 
+function isRaceResultTopic(topic: string): boolean {
+  const normalized = normalizeForSearch(topic)
+  return /\bresultado\b|\bresultados\b|\bresult\b|\bclassificacao\b|\bchegada\b|\bvencedor\b|\bvenceu\b/.test(normalized)
+}
+
+function expandWeekendSearchTerms(topic: string): string[] {
+  const terms = tokenizeTopic(topic)
+  const normalized = normalizeForSearch(topic)
+
+  if (normalized.includes("silverstone")) {
+    terms.push("british", "inglaterra", "gra-bretanha", "great", "britain")
+  }
+
+  return Array.from(new Set(terms))
+}
+
 function scoreOccurrences(text: string, terms: string[]): { score: number; matchedTerms: string[] } {
   if (terms.length === 0) return { score: 0, matchedTerms: [] }
 
@@ -148,6 +164,38 @@ async function getRandomGalleryImage(): Promise<string | null> {
   return rows[0]?.imageUrl ?? null
 }
 
+async function getTopicGalleryImage(topic: string): Promise<string | null> {
+  const db = getDb()
+  if (!db) return null
+
+  const terms = expandWeekendSearchTerms(topic)
+  if (terms.length === 0) return null
+
+  const rows = await db
+    .select({
+      title: mediaGalleries.title,
+      folderKey: mediaGalleries.folderKey,
+      coverImageUrl: mediaGalleries.coverImageUrl,
+      imageUrl: galleryImages.imageUrl,
+      sortOrder: galleryImages.sortOrder,
+    })
+    .from(galleryImages)
+    .innerJoin(mediaGalleries, eq(galleryImages.galleryId, mediaGalleries.id))
+    .orderBy(desc(mediaGalleries.createdAt), asc(galleryImages.sortOrder))
+    .limit(500)
+
+  const scored = rows
+    .map((row) => {
+      const haystack = normalizeForSearch(`${row.title} ${row.folderKey ?? ""}`)
+      const score = terms.reduce((total, term) => total + (haystack.includes(term) ? 1 : 0), 0)
+      return { ...row, score }
+    })
+    .filter((row) => row.score > 0)
+    .sort((left, right) => right.score - left.score || left.sortOrder - right.sortOrder)
+
+  return scored[0]?.coverImageUrl ?? scored[0]?.imageUrl ?? null
+}
+
 async function readNewsSyncSnapshot(): Promise<NewsSyncItem[]> {
   try {
     const file = join(process.cwd(), "data", "news-sync", "latest.json")
@@ -157,6 +205,102 @@ async function readNewsSyncSnapshot(): Promise<NewsSyncItem[]> {
   } catch {
     return []
   }
+}
+
+async function buildRaceResultContext(topic: string): Promise<string> {
+  if (!isRaceResultTopic(topic)) {
+    return ""
+  }
+
+  const db = getDb()
+  if (!db) return ""
+
+  const searchTerms = expandWeekendSearchTerms(topic)
+  const weekends = await db
+    .select({
+      id: raceWeekends.id,
+      season: raceWeekends.season,
+      round: raceWeekends.round,
+      grandPrixName: raceWeekends.grandPrixName,
+      circuit: raceWeekends.circuit,
+      country: raceWeekends.country,
+      location: raceWeekends.location,
+    })
+    .from(raceWeekends)
+    .orderBy(desc(raceWeekends.season), desc(raceWeekends.round))
+
+  const weekend = weekends.find((item) => {
+    const haystack = normalizeForSearch(
+      `${item.grandPrixName} ${item.circuit} ${item.country} ${item.location}`,
+    )
+    return searchTerms.some((term) => haystack.includes(term))
+  })
+
+  if (!weekend) {
+    return ""
+  }
+
+  const [raceSession] = await db
+    .select({
+      id: raceSessions.id,
+      sessionType: raceSessions.sessionType,
+      status: raceSessions.status,
+      startTimeUtc: raceSessions.startTimeUtc,
+      endTimeUtc: raceSessions.endTimeUtc,
+    })
+    .from(raceSessions)
+    .where(and(eq(raceSessions.weekendId, weekend.id), eq(raceSessions.sessionType, "Race")))
+    .limit(1)
+
+  if (!raceSession) {
+    return ""
+  }
+
+  const rows = await db
+    .select({
+      position: sessionResults.position,
+      driver: drivers.fullName,
+      code: drivers.code,
+      team: teams.name,
+      gridPosition: sessionResults.gridPosition,
+      lapsCompleted: sessionResults.lapsCompleted,
+      status: sessionResults.status,
+      points: sessionResults.points,
+      fastestLapRank: sessionResults.fastestLapRank,
+    })
+    .from(sessionResults)
+    .innerJoin(drivers, eq(sessionResults.driverId, drivers.id))
+    .innerJoin(teams, eq(drivers.teamId, teams.id))
+    .where(eq(sessionResults.sessionId, raceSession.id))
+    .orderBy(asc(sessionResults.position))
+
+  if (rows.length === 0) {
+    return [
+      "=== OFFICIAL RACE RESULT CONTEXT ===",
+      `Topic asks for a race result, but no stored Race result rows were found for ${weekend.season} R${weekend.round} ${weekend.grandPrixName}.`,
+      "Do not invent finishing order. Say the official result is not available in the local data yet.",
+    ].join("\n")
+  }
+
+  const winner = rows[0]
+  const podium = rows.slice(0, 3).map((row) => `${row.position}. ${row.driver} (${row.team})`).join("; ")
+  const topTen = rows.slice(0, 10).map((row) => {
+    const grid = row.gridPosition != null ? `grid P${row.gridPosition}` : "grid n/a"
+    const laps = row.lapsCompleted != null ? `${row.lapsCompleted} laps` : "laps n/a"
+    const fastestLap = row.fastestLapRank != null ? `, fastest lap rank ${row.fastestLapRank}` : ""
+    return `${row.position}. ${row.driver} (${row.team}) - ${row.points} pts, ${grid}, ${laps}, ${row.status}${fastestLap}`
+  })
+
+  return [
+    "=== OFFICIAL RACE RESULT CONTEXT ===",
+    "This block is the primary factual source for the requested result topic. Do not contradict it.",
+    `Race: ${weekend.season} R${weekend.round} ${weekend.grandPrixName} at ${weekend.circuit}, ${weekend.country}`,
+    `Race session status in calendar table: ${raceSession.status}; scheduled window: ${raceSession.startTimeUtc.toISOString()} to ${raceSession.endTimeUtc.toISOString()}`,
+    `Winner: ${winner.driver} (${winner.team})`,
+    `Podium: ${podium}`,
+    "Top 10:",
+    ...topTen,
+  ].join("\n")
 }
 
 async function buildRelevantNewsContext(topic: string): Promise<{ text: string; sources: RelevanceCandidate[] }> {
@@ -270,7 +414,8 @@ async function buildTopicContext(topic: string): Promise<string> {
   const db = getDb()
   if (!db) return ""
 
-  const [newsContext, driverRows, teamRows, weekendRows] = await Promise.all([
+  const [raceResultContext, newsContext, driverRows, teamRows, weekendRows] = await Promise.all([
+    buildRaceResultContext(topic),
     buildRelevantNewsContext(topic),
     db
       .select({ fullName: drivers.fullName, points: drivers.points, position: drivers.position, teamName: teams.name })
@@ -295,6 +440,7 @@ async function buildTopicContext(topic: string): Promise<string> {
   const weekendText = weekendRows.map((w) => `R${w.round} ${w.grandPrixName} - ${w.circuit}, ${w.country}`).join("\n")
 
   return [
+    raceResultContext,
     newsContext.text,
     weekendText ? `\nCalendar: recent weekends\n${weekendText}` : "",
     driverText ? `\nDrivers standings\n${driverText}` : "",
@@ -323,6 +469,7 @@ async function generateTopicArticle(topic: string): Promise<{
     "You are a Formula 1 editor writing in Brazilian Portuguese.",
     `Write an article exclusively about: ${topic}.`,
     "Use the news and data in the context below as the main factual source. Do not invent facts, names, results or dates that are not supported by the context.",
+    "If an OFFICIAL RACE RESULT CONTEXT block is present, it is the primary source: the title, excerpt and body must reflect that race result, winner and podium.",
     "If the context is thin, keep the piece analytical and conservative. Do not assert anything that is not supported.",
     "Respond only with valid JSON in this format:",
     '{"title":"...","excerpt":"...","category":"...","readTime":"...","author":"...","body":["..."],"image":null}',
@@ -374,7 +521,7 @@ async function generateTopicArticle(topic: string): Promise<{
 
 export async function createTopicPendingArticle(topic: string): Promise<{ id: number | null; title: string }> {
   const article = await generateTopicArticle(topic)
-  const image = article.image ?? (await getRandomGalleryImage())
+  const image = article.image ?? (await getTopicGalleryImage(topic)) ?? (await getRandomGalleryImage())
   const filename = `${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}_topic_${slugify(topic)}.json`
 
   const id = await upsertImportedPendingArticle({

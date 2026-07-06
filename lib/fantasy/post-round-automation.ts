@@ -1,6 +1,6 @@
 import "server-only"
 
-import { and, desc, eq, gt, inArray } from "drizzle-orm"
+import { and, desc, eq, gt, inArray, lte } from "drizzle-orm"
 import { getRedisClient } from "@/lib/cache/redis"
 import { getDb } from "@/lib/db/client"
 import { raceSessions, raceWeekends, sessionStatusEvents } from "@/lib/db/schema"
@@ -9,10 +9,15 @@ import { fetchRaceResults, fetchSprintResults } from "@/lib/jolpica/client"
 import { resolveExternalRound } from "@/lib/jolpica/round-mapping"
 
 const AUTOMATION_KEY_PREFIX = "fantasy:auto-post-round:v1"
-const POLL_INTERVAL_MS = 5 * 60 * 1000
+const HIGH_FREQUENCY_POLL_INTERVAL_MS = 5 * 60 * 1000
+const LOW_FREQUENCY_POLL_INTERVAL_MS = 60 * 60 * 1000
+const MIN_POLL_INTERVAL_MS = 60 * 1000
 const FINALISED_DELAY_MS = 10 * 60 * 1000
 const RECONCILE_WINDOW_MS = 24 * 60 * 60 * 1000
 const LOOKBACK_WINDOW_MS = 30 * 24 * 60 * 60 * 1000
+const RESULT_CAPTURE_WINDOW_START_MS = 2 * 60 * 60 * 1000
+const RESULT_CAPTURE_WINDOW_END_MS = 4 * 60 * 60 * 1000
+const HISTORICAL_RECONCILE_CANDIDATE_LIMIT = 1
 
 interface AutomationState {
   sprintResultsHash: string | null
@@ -22,6 +27,7 @@ interface AutomationState {
   lastError: string | null
   attemptCount: number
   reconcileUntilIso: string | null
+  backoffUntilIso: string | null
 }
 
 interface PointSessionCandidate {
@@ -41,10 +47,12 @@ interface RoundCandidate {
 }
 
 interface AutomationRuntimeState {
-  timer: ReturnType<typeof setInterval> | null
+  timer: ReturnType<typeof setTimeout> | null
   running: boolean
   inFlight: boolean
   lastRunAtIso: string | null
+  nextRunAtIso: string | null
+  pollIntervalMs: number | null
 }
 
 const runtimeState: AutomationRuntimeState = {
@@ -52,12 +60,28 @@ const runtimeState: AutomationRuntimeState = {
   running: false,
   inFlight: false,
   lastRunAtIso: null,
+  nextRunAtIso: null,
+  pollIntervalMs: null,
 }
 
 const localStateStore = new Map<string, AutomationState>()
+const fallbackLoggedSessionIds = new Set<number>()
 
 function getAutomationStateKey(season: number, round: number): string {
   return `${AUTOMATION_KEY_PREFIX}:${season}:${round}`
+}
+
+function normalizeAutomationState(state: Partial<AutomationState>): AutomationState {
+  return {
+    sprintResultsHash: state.sprintResultsHash ?? null,
+    raceResultsHash: state.raceResultsHash ?? null,
+    lastMode: state.lastMode ?? null,
+    lastProcessedAtIso: state.lastProcessedAtIso ?? null,
+    lastError: state.lastError ?? null,
+    attemptCount: state.attemptCount ?? 0,
+    reconcileUntilIso: state.reconcileUntilIso ?? null,
+    backoffUntilIso: state.backoffUntilIso ?? null,
+  }
 }
 
 async function loadAutomationState(season: number, round: number): Promise<AutomationState> {
@@ -68,14 +92,19 @@ async function loadAutomationState(season: number, round: number): Promise<Autom
     try {
       const rawValue = await redis.get(key)
       if (rawValue) {
-        return JSON.parse(rawValue) as AutomationState
+        return normalizeAutomationState(JSON.parse(rawValue) as Partial<AutomationState>)
       }
     } catch {
       // fall back to local state store
     }
   }
 
-  return localStateStore.get(key) ?? {
+  const localState = localStateStore.get(key)
+  if (localState) {
+    return normalizeAutomationState(localState)
+  }
+
+  return {
     sprintResultsHash: null,
     raceResultsHash: null,
     lastMode: null,
@@ -83,6 +112,7 @@ async function loadAutomationState(season: number, round: number): Promise<Autom
     lastError: null,
     attemptCount: 0,
     reconcileUntilIso: null,
+    backoffUntilIso: null,
   }
 }
 
@@ -171,13 +201,29 @@ async function getLatestSessionStatus(sessionId: number): Promise<{ status: stri
   return event ?? null
 }
 
-async function getRoundCandidates(): Promise<RoundCandidate[]> {
+interface ActiveRaceWindow {
+  season: number
+  round: number
+}
+
+async function getRoundCandidates(target?: ActiveRaceWindow): Promise<RoundCandidate[]> {
   const db = getDb()
   if (!db) {
     return []
   }
 
   const threshold = new Date(Date.now() - LOOKBACK_WINDOW_MS)
+  const filters = target
+    ? and(
+        inArray(raceSessions.sessionType, ["Sprint", "Race"]),
+        gt(raceSessions.endTimeUtc, threshold),
+        eq(raceWeekends.season, target.season),
+        eq(raceWeekends.round, target.round),
+      )
+    : and(
+        inArray(raceSessions.sessionType, ["Sprint", "Race"]),
+        gt(raceSessions.endTimeUtc, threshold),
+      )
 
   const sessions = await db
     .select({
@@ -189,12 +235,7 @@ async function getRoundCandidates(): Promise<RoundCandidate[]> {
     })
     .from(raceSessions)
     .innerJoin(raceWeekends, eq(raceSessions.weekendId, raceWeekends.id))
-    .where(
-      and(
-        inArray(raceSessions.sessionType, ["Sprint", "Race"]),
-        gt(raceSessions.endTimeUtc, threshold),
-      ),
-    )
+    .where(filters)
 
   const grouped = new Map<string, RoundCandidate>()
 
@@ -238,6 +279,49 @@ async function getRoundCandidates(): Promise<RoundCandidate[]> {
   })
 }
 
+async function getActiveRaceResultWindow(now = Date.now()): Promise<ActiveRaceWindow | null> {
+  const db = getDb()
+  if (!db) {
+    return null
+  }
+
+  const windowLookback = new Date(now - RESULT_CAPTURE_WINDOW_END_MS)
+  const windowLookahead = new Date(now - RESULT_CAPTURE_WINDOW_START_MS)
+
+  const [race] = await db
+    .select({
+      season: raceWeekends.season,
+      round: raceWeekends.round,
+      startTimeUtc: raceSessions.startTimeUtc,
+    })
+    .from(raceSessions)
+    .innerJoin(raceWeekends, eq(raceSessions.weekendId, raceWeekends.id))
+    .where(
+      and(
+        eq(raceSessions.sessionType, "Race"),
+        gt(raceSessions.startTimeUtc, windowLookback),
+        lte(raceSessions.startTimeUtc, windowLookahead),
+      ),
+    )
+    .orderBy(desc(raceSessions.startTimeUtc))
+    .limit(1)
+
+  if (!race) {
+    return null
+  }
+
+  const windowStart = race.startTimeUtc.getTime() + RESULT_CAPTURE_WINDOW_START_MS
+  const windowEnd = race.startTimeUtc.getTime() + RESULT_CAPTURE_WINDOW_END_MS
+  if (now < windowStart || now > windowEnd) {
+    return null
+  }
+
+  return {
+    season: race.season,
+    round: race.round,
+  }
+}
+
 const FALLBACK_GRACE_HOURS = 2
 
 async function detectFinalisedViaFallback(
@@ -249,9 +333,74 @@ async function detectFinalisedViaFallback(
     return null
   }
 
-  console.log(`[fantasy/automation] Fallback: session ${sessionId} detected as finalised via endTimeUtc`)
+  if (!fallbackLoggedSessionIds.has(sessionId)) {
+    fallbackLoggedSessionIds.add(sessionId)
+    console.log(`[fantasy/automation] Fallback: session ${sessionId} detected as finalised via endTimeUtc`)
+  }
 
   return endTimeUtc
+}
+
+async function resolveNextPollIntervalMs(now = Date.now()): Promise<number> {
+  const db = getDb()
+  if (!db) {
+    return LOW_FREQUENCY_POLL_INTERVAL_MS
+  }
+
+  const windowLookback = new Date(now - RESULT_CAPTURE_WINDOW_END_MS)
+  const windowLookahead = new Date(now + LOW_FREQUENCY_POLL_INTERVAL_MS)
+
+  const raceWindows = await db
+    .select({
+      sessionId: raceSessions.id,
+      season: raceWeekends.season,
+      round: raceWeekends.round,
+      startTimeUtc: raceSessions.startTimeUtc,
+    })
+    .from(raceSessions)
+    .innerJoin(raceWeekends, eq(raceSessions.weekendId, raceWeekends.id))
+    .where(
+      and(
+        eq(raceSessions.sessionType, "Race"),
+        gt(raceSessions.startTimeUtc, windowLookback),
+        lte(raceSessions.startTimeUtc, windowLookahead),
+      ),
+    )
+    .orderBy(raceSessions.startTimeUtc)
+
+  for (const race of raceWindows) {
+    const windowStart = race.startTimeUtc.getTime() + RESULT_CAPTURE_WINDOW_START_MS
+    const windowEnd = race.startTimeUtc.getTime() + RESULT_CAPTURE_WINDOW_END_MS
+
+    if (now >= windowStart && now <= windowEnd) {
+      return HIGH_FREQUENCY_POLL_INTERVAL_MS
+    }
+
+    if (now < windowStart) {
+      return Math.max(
+        MIN_POLL_INTERVAL_MS,
+        Math.min(LOW_FREQUENCY_POLL_INTERVAL_MS, windowStart - now),
+      )
+    }
+  }
+
+  return LOW_FREQUENCY_POLL_INTERVAL_MS
+}
+
+function isRateLimitError(error: unknown): boolean {
+  return error instanceof Error && /\b429\b|Rate limited/i.test(error.message)
+}
+
+function resolveBackoffUntil(error: unknown, now = Date.now()): string | null {
+  if (!isRateLimitError(error)) {
+    return null
+  }
+
+  return new Date(now + LOW_FREQUENCY_POLL_INTERVAL_MS).toISOString()
+}
+
+function isInBackoff(state: AutomationState, now: number): boolean {
+  return Boolean(state.backoffUntilIso && new Date(state.backoffUntilIso).getTime() > now)
 }
 
 function isEligibleForProcessing(candidate: PointSessionCandidate | null, now: number): boolean {
@@ -284,6 +433,7 @@ async function runSprintSync(candidate: RoundCandidate, state: AutomationState):
     lastMode: "sprint_sync",
     lastProcessedAtIso: new Date().toISOString(),
     lastError: null,
+    backoffUntilIso: null,
     attemptCount: state.attemptCount + 1,
   }
 }
@@ -327,6 +477,7 @@ async function runRacePostRound(candidate: RoundCandidate, state: AutomationStat
     lastMode: "race_post_round",
     lastProcessedAtIso: new Date().toISOString(),
     lastError: null,
+    backoffUntilIso: null,
     attemptCount: state.attemptCount + 1,
     reconcileUntilIso: reconcileUntil,
   }
@@ -335,6 +486,10 @@ async function runRacePostRound(candidate: RoundCandidate, state: AutomationStat
 async function processCandidate(candidate: RoundCandidate): Promise<void> {
   const now = Date.now()
   const state = await loadAutomationState(candidate.season, candidate.round)
+
+  if (isInBackoff(state, now)) {
+    return
+  }
 
   try {
     let nextState = state
@@ -352,10 +507,15 @@ async function processCandidate(candidate: RoundCandidate): Promise<void> {
     await saveAutomationState(candidate.season, candidate.round, nextState)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    console.error(`[fantasy/automation] Round ${candidate.season}/${candidate.round} failed:`, message)
+    const backoffUntilIso = resolveBackoffUntil(error, now)
+    console.error(
+      `[fantasy/automation] Round ${candidate.season}/${candidate.round} failed:`,
+      backoffUntilIso ? `${message}; retry after ${backoffUntilIso}` : message,
+    )
     await saveAutomationState(candidate.season, candidate.round, {
       ...state,
       lastError: message,
+      backoffUntilIso: backoffUntilIso ?? state.backoffUntilIso,
       attemptCount: state.attemptCount + 1,
     })
   }
@@ -370,12 +530,45 @@ async function checkAutomation(): Promise<void> {
   runtimeState.lastRunAtIso = new Date().toISOString()
 
   try {
-    const candidates = await getRoundCandidates()
-    for (const candidate of candidates) {
+    const activeRaceWindow = await getActiveRaceResultWindow()
+    const candidates = await getRoundCandidates(activeRaceWindow ?? undefined)
+    const candidatesToProcess = activeRaceWindow
+      ? candidates
+      : candidates.slice(0, HISTORICAL_RECONCILE_CANDIDATE_LIMIT)
+
+    for (const candidate of candidatesToProcess) {
       await processCandidate(candidate)
     }
   } finally {
     runtimeState.inFlight = false
+  }
+}
+
+async function scheduleNextCheck(): Promise<void> {
+  let delayMs = LOW_FREQUENCY_POLL_INTERVAL_MS
+  try {
+    delayMs = await resolveNextPollIntervalMs()
+  } catch (error) {
+    console.warn(
+      "[fantasy/automation] Failed to resolve next poll interval:",
+      error instanceof Error ? error.message : error,
+    )
+  }
+
+  runtimeState.pollIntervalMs = delayMs
+  runtimeState.nextRunAtIso = new Date(Date.now() + delayMs).toISOString()
+  runtimeState.timer = setTimeout(() => {
+    runAutomationLoop().catch((error) => {
+      console.error("[fantasy/automation] Check failed:", error)
+    })
+  }, delayMs)
+}
+
+async function runAutomationLoop(): Promise<void> {
+  try {
+    await checkAutomation()
+  } finally {
+    await scheduleNextCheck()
   }
 }
 
@@ -385,17 +578,13 @@ export function startFantasyPostRoundAutomation(): void {
   }
 
   runtimeState.running = true
-  console.log(`[fantasy/automation] Started — checking every ${POLL_INTERVAL_MS / 60_000}min`)
+  console.log(
+    `[fantasy/automation] Started — high frequency ${HIGH_FREQUENCY_POLL_INTERVAL_MS / 60_000}min from race start +2h to +4h; low frequency ${LOW_FREQUENCY_POLL_INTERVAL_MS / 60_000}min`,
+  )
 
-  checkAutomation().catch((error) => {
+  runAutomationLoop().catch((error) => {
     console.error("[fantasy/automation] Initial check failed:", error)
   })
-
-  runtimeState.timer = setInterval(() => {
-    checkAutomation().catch((error) => {
-      console.error("[fantasy/automation] Check failed:", error)
-    })
-  }, POLL_INTERVAL_MS)
 }
 
 export function getFantasyPostRoundAutomationStatus() {
@@ -403,5 +592,7 @@ export function getFantasyPostRoundAutomationStatus() {
     running: runtimeState.running,
     inFlight: runtimeState.inFlight,
     lastRunAtIso: runtimeState.lastRunAtIso,
+    nextRunAtIso: runtimeState.nextRunAtIso,
+    pollIntervalMs: runtimeState.pollIntervalMs,
   }
 }

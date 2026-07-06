@@ -104,9 +104,9 @@ Current migration index: **32** (`0032_drop_media_videos.sql`)
 - Redis is required (`REDIS_URL`); session banner falls back to Postgres when Redis is unavailable
 
 ### Live Timing
-- Dual-source: **F1 SignalR Hub** (direct, preferred) or **F1MV GraphQL** (legacy fallback) — controlled by `LIVE_TIMING_SOURCE` env var
+- Single-source: **F1 SignalR Hub** via `livetiming.formula1.com/signalrcore`; F1MV/MultiViewer is no longer used
 - SignalR client: `lib/live-timing/signalr/{client,topics,snapshot-bridge}.ts` — connects to `livetiming.formula1.com/signalrcore`, subscribes to 18 topics, accumulates state via deep-merge into `F1LiveTimingRawState`
-- Snapshot bridge: translates SignalR push messages into the same shape as F1MV GraphQL — zero changes to parsers/UI
+- Snapshot bridge: translates SignalR push messages into the raw state shape consumed by parsers/UI
 - Compressed topics (`CarData.z`, `Position.z`): base64-encoded deflate-raw, decompressed with `zlib.inflateRawSync`
 - **Turbopack compatibility:** `@microsoft/signalr` uses internal `require()` calls — must be listed in `serverExternalPackages` in `next.config.mjs` so Node.js loads it natively instead of Turbopack bundling it. The client also uses dynamic `import('@microsoft/signalr')` to defer loading.
 - Shared deep-merge utility: `lib/live-timing/utils/deep-merge.ts` — `deepMerge()` and `applyDelta()` used by both snapshot-bridge and recording/replay
@@ -198,7 +198,7 @@ Price evolution:
 - **Post-round endpoint**: `POST /api/fantasy/post-round` with `{ season, round }` — unified pipeline that runs all 5 phases: (1) sync standings + circuits, (2) sync race/quali/sprint/laps/pits for the round, (3) OpenF1 enrichment (non-critical), (4) score all locked entries, (5) evolve prices for round+1. Returns step-by-step status. `maxDuration = 120s`.
 
 Testing notes:
-- Stable Playwright runs should prefer production mode on port `3001` with `PLAYWRIGHT_SKIP_WEBSERVER=1`
+- Stable Playwright runs should prefer production mode on port `3010` with `PLAYWRIGHT_SKIP_WEBSERVER=1`
 - Existing fantasy E2E coverage includes: happy path, global Pit Wall Lead selection, post-lock mutation blocking, and opening a finished round with persisted breakdown
 - Simulation script `scripts/simulate-fantasy-users.ts` creates 10 reusable fantasy sessions (`fantasy-sim-01` … `fantasy-sim-10`) for leaderboard inspection across rounds
 
@@ -228,7 +228,7 @@ All consumers must read from it — never hardcode dates/sessions in:
 - Token validation: checks JWT `exp` + `SubscriptionStatus === 'active'`
 - `isAuthenticated()` lazily loads token from env/memory on first call
 - **Local renewal:** `pnpm f1tv:login` — opens Chromium (anti-bot headers set), you log in manually, cookie captured automatically, saved to `.env.local`
-- **Production renewal:** `/admin/f1tv` page — paste `login-session` cookie value from browser DevTools; server validates JWT, activates in memory, saves to Redis for persistence across restarts
+- **Local admin renewal:** `/admin/f1tv` page — paste `login-session` cookie value from browser DevTools; server validates JWT, activates in memory, saves to Redis for persistence across restarts
 - Token store: `lib/f1tv/token-store.ts` — `saveTokenToRedis()` / `loadTokenFromRedis()` using Redis key `f1tv:token`
 - Admin page: `app/[locale]/admin/f1tv/page.tsx` — shows status (days remaining, subscription), paste-token tab + credentials tab
 
@@ -256,28 +256,10 @@ All consumers must read from it — never hardcode dates/sessions in:
 - `live` — currently live F1TV sessions
 - `status` — auth status + SignalR connection state
 
-#### ⚠️ Known Issue: F1TV Video Streaming — Geo-Restriction (HTTP 451)
-**Status: Unresolved — next implementation challenge**
-
-`/api/f1tv/streams` returns HTTP 451 (Unavailable For Legal Reasons) when called from Vercel servers (US datacenters). F1TV geo-restricts BRA-licensed content by server IP.
-
-**Attempted solutions:**
-- `preferredRegion: 'gru1'` (São Paulo) — ignored by Vercel Hobby plan
-- Client-side fetch to `f1tv.formula1.com` directly — blocked by F1TV CORS policy
-- `X-Forwarded-For` header spoofing — F1TV ignores it
-
-**Viable solutions (not yet implemented):**
-1. **Vercel Pro plan** — enables `preferredRegion: 'gru1'` to actually run in São Paulo
-2. **Hetzner proxy** (already available) — lightweight Node.js/Express endpoint on the existing Hetzner server (Brazilian IP) that accepts `contentId` + tokens from Vercel and proxies the F1TV play request
-3. **Cloudflare Worker** with `cf.country` routing to a Brazilian PoP
-
-**Recommended approach: Hetzner proxy**
-- Hetzner server already exists and has Brazilian IP
-- Add a small Express endpoint: receives `{ contentId, channelId, subscriptionToken, entitlementToken }` → calls F1TV → returns `{ url, streamType }`
-- Vercel `/api/f1tv/streams` calls this proxy instead of F1TV directly
-- Secure with a shared secret (`F1TV_PROXY_SECRET` env var)
-
-**Impact:** Live streaming and VOD replay video playback are non-functional in production. Live timing (SignalR), F1TV content browsing, and all other features work correctly.
+#### Local F1TV playback
+- This app is intended to run on this machine or another local machine, not on Vercel/Hetzner.
+- F1TV playback requests originate from the local machine running the app.
+- Optional proxy variables (`F1TV_PROXY_URL`, `F1TV_MPD_PROXY_URL`, `F1TV_SEGMENT_PROXY_URL`, `F1TV_AUDIO_PROXY_URL`) remain supported only for local networks that need custom routing.
 
 #### Multi-Camera (`components/live/multi-cam-selector.tsx`)
 - Channels: World Feed (WIF), Pit Lane (PRES), Data Channel, Tracker + expandable onboard grid per driver
@@ -307,7 +289,7 @@ All consumers must read from it — never hardcode dates/sessions in:
 #### Session Scheduler (`lib/live-timing/scheduler.ts`)
 - Checks `race_sessions` every 5 min for sessions starting within 60 min
 - Auto-activates SignalR + recording when a session is approaching
-- Enabled via `AUTO_CONNECT_ENABLED=1` + `LIVE_TIMING_SOURCE=signalr`
+- Enabled via `AUTO_CONNECT_ENABLED=1`
 - Runs via `instrumentation.ts` (Next.js server startup hook)
 - Recording auto-stops when session reaches `Finalised` status
 
@@ -324,25 +306,23 @@ All consumers must read from it — never hardcode dates/sessions in:
 
 ```bash
 DATABASE_URL        # PostgreSQL (use sslmode=disable for local without SSL)
-UPSTASH_REDIS_REST_URL_KV_REST_API_URL    # Upstash Redis REST URL (set via Vercel Marketplace)
-UPSTASH_REDIS_REST_URL_KV_REST_API_TOKEN  # Upstash Redis REST token (set via Vercel Marketplace)
+UPSTASH_REDIS_REST_URL_KV_REST_API_URL    # optional Upstash Redis REST URL
+UPSTASH_REDIS_REST_URL_KV_REST_API_TOKEN  # optional Upstash Redis REST token
 REDIS_SESSION_BANNER_TTL_SECONDS  # optional, suggested: 30
 CLOUDINARY_CLOUD_NAME
 CLOUDINARY_API_KEY
 CLOUDINARY_API_SECRET
-F1MV_API_URL        # MultiViewer GraphQL (default: http://localhost:10101/api/graphql)
 F1TV_EMAIL          # F1TV Pro account email (used by pnpm f1tv:login)
 F1TV_PASSWORD       # F1TV Pro account password (used by pnpm f1tv:login)
 F1TV_TOKEN          # F1TV login-session cookie — auto-saved by pnpm f1tv:login locally;
-                    # in production, set via /admin/f1tv (persisted to Redis automatically)
+                    # can also be set via /admin/f1tv (persisted to Redis automatically)
 F1TV_AUTO_RENEW_ENABLED # "0" to disable automatic renewal 24h before Practice 1 (default: enabled)
-LIVE_TIMING_SOURCE  # "signalr" or "f1mv" (default: "f1mv")
 SIGNALR_HUB_URL     # optional SignalR hub/proxy URL (default: https://livetiming.formula1.com/signalrcore)
 RECORDING_ENABLED   # "1" to auto-record SignalR sessions to data/recordings/ (default: off)
 AUTO_CONNECT_ENABLED # "1" to auto-connect SignalR 60min before scheduled sessions (default: off)
-# F1TV_PROXY_URL    # URL of Hetzner proxy for geo-unrestricted F1TV auth/stream URLs
+# F1TV_PROXY_URL    # optional local/network proxy base URL for F1TV auth/stream URLs
 # F1TV_PROXY_AUTH_URL # optional exact auth proxy endpoint; defaults to F1TV_PROXY_URL derived to /f1tv/auth
-# F1TV_PROXY_SECRET # shared secret for Hetzner proxy authentication
+# F1TV_PROXY_SECRET # optional shared secret for proxy authentication
 ```
 
 ## Key Conventions

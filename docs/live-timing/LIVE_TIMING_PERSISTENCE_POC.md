@@ -5,7 +5,7 @@ Validar um caminho de persistência para o live timing que reduza recomputação
 
 ## Estado atual observado
 - O front faz polling frequente e havia múltiplos pontos consumindo `fetchLiveTiming`.
-- Cada consumidor podia provocar requisições redundantes ao GraphQL de origem.
+- Cada consumidor podia provocar requisições redundantes à origem de Live Timing.
 - Não existia camada central de snapshot compartilhado entre usuários.
 
 ## PoC implementada
@@ -36,7 +36,7 @@ Arquivo: `app/[locale]/api/live-timing/route.ts`
 Arquivo: `lib/live-timing/api.ts`
 
 - `fetchLiveTiming` passa a consumir `/<locale>/api/live-timing`.
-- Mantém fallback para `GQL_ENDPOINT` direto em caso de indisponibilidade da rota interna.
+- Não há fallback client-side para endpoint externo; indisponibilidade da rota interna retorna `null` com backoff.
 - Inclui dedupe de request em voo no cliente (`inFlightRequest`).
 - Inclui microcache de resposta para reduzir bursts entre componentes em polling.
 

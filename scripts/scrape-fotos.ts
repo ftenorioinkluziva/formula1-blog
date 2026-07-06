@@ -205,7 +205,7 @@ async function discoverGalleries(days: number): Promise<Gallery[]> {
     const html = await fetchText(url)
     const cards = parseGalleryCards(html, MOTORSPORT_INDEX)
 
-    let acceptedOnPage = false
+    let foundNew = false
     let shouldStop = false
 
     for (const gallery of cards) {
@@ -216,14 +216,14 @@ async function discoverGalleries(days: number): Promise<Gallery[]> {
         if (!galleries.has(gallery.url)) {
           galleries.set(gallery.url, gallery)
           console.log(`    [ok] [${Math.floor(gallery.daysAgo)}d] ${gallery.title}`)
+          foundNew = true
         }
-        acceptedOnPage = true
       } else if (gallery.daysAgo >= STOP_AFTER_DAYS) {
         shouldStop = true
       }
     }
 
-    if (!acceptedOnPage || shouldStop || !html.match(/next|proxima|›|»/i)) break
+    if (!foundNew || shouldStop || !html.match(/next|proxima|›|»/i)) break
     page += 1
     await sleep(DELAY_MS)
   }

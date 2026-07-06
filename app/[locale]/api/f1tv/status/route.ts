@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { ensureAuthenticated, getDecodedToken } from '@/lib/f1tv/auth'
-import { LIVE_TIMING_SOURCE } from '@/lib/live-timing/constants'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -53,7 +52,7 @@ export async function GET() {
     },
     signalR,
     config: {
-      source: LIVE_TIMING_SOURCE,
+      source: 'signalr',
       autoConnectEnabled: process.env.AUTO_CONNECT_ENABLED === '1',
       f1tvAutoRenewEnabled: process.env.F1TV_AUTO_RENEW_ENABLED !== '0',
       hasF1TVEnvCredentials: Boolean(process.env.F1TV_EMAIL && process.env.F1TV_PASSWORD),
@@ -68,8 +67,8 @@ export async function GET() {
 async function getSignalRStatus() {
   const [{ isConnected, getSessionKey, getConnectionState }, { isSignalRBridgeActive }] =
     await Promise.all([
-      importRuntime<typeof import('@/lib/live-timing/signalr/client')>('@/lib/live-timing/signalr/client'),
-      importRuntime<typeof import('@/lib/live-timing/signalr/snapshot-bridge')>('@/lib/live-timing/signalr/snapshot-bridge'),
+      import('@/lib/live-timing/signalr/client'),
+      import('@/lib/live-timing/signalr/snapshot-bridge'),
     ])
 
   return {
@@ -81,18 +80,11 @@ async function getSignalRStatus() {
 }
 
 async function getSchedulerStatus() {
-  const { getSchedulerStatus } =
-    await importRuntime<typeof import('@/lib/live-timing/scheduler')>('@/lib/live-timing/scheduler')
+  const { getSchedulerStatus } = await import('@/lib/live-timing/scheduler')
   return getSchedulerStatus()
 }
 
 async function getAutoRenewalStatus() {
-  const { getF1TVAutoRenewalStatus } =
-    await importRuntime<typeof import('@/lib/f1tv/auto-renewal-scheduler')>('@/lib/f1tv/auto-renewal-scheduler')
+  const { getF1TVAutoRenewalStatus } = await import('@/lib/f1tv/auto-renewal-scheduler')
   return getF1TVAutoRenewalStatus()
-}
-
-async function importRuntime<T>(specifier: string): Promise<T> {
-  const importer = new Function("specifier", "return import(specifier)") as (value: string) => Promise<T>
-  return importer(specifier)
 }

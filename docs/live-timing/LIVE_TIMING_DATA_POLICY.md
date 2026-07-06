@@ -43,7 +43,7 @@ Variáveis de ambiente:
 
 ### 1) Ingestão única e centralizada
 
-- Manter **somente backend** consultando `http://localhost:10101/api/graphql`.
+- Manter **somente backend** conectado ao SignalR oficial e expondo snapshots por rotas internas.
 - Frontend deve consumir apenas rotas internas (`/[locale]/api/*`).
 - Evitar polling direto no browser para reduzir fan-out e carga no provedor de live timing.
 
@@ -57,7 +57,7 @@ Variáveis de ambiente:
 ### 3) O que manter fora do PostgreSQL (por enquanto)
 
 - **Telemetria bruta de alta frequência** (RPM, throttle, brake, speed por canal) em granularidade de sub-segundo.
-- Payload bruto completo do GraphQL a cada poll.
+- Payload bruto completo do SignalR a cada poll.
 
 ### 4) Cache e retenção sugeridos
 
@@ -74,7 +74,7 @@ Variáveis de ambiente:
 
 ## Pontos de atenção atuais
 
-- `components/session-panel.tsx` ainda consulta GraphQL direto (`http://localhost:10101/api/graphql`) e deve ser migrado para `fetchLiveTiming`/API interna caso volte a ser usado.
+- Componentes client-side devem usar `fetchLiveTiming`/API interna; não deve haver acesso direto a provedores externos de Live Timing no browser.
 
 ## Evolução recomendada
 

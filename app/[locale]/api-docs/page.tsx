@@ -51,7 +51,7 @@ const Badge = ({ children, color = "gray" }: { children: React.ReactNode; color?
 const TOC = [
   { id: "overview", label: "Visão Geral" },
   { id: "connection", label: "Conexão" },
-  { id: "queries", label: "Queries Disponíveis" },
+  { id: "snapshot", label: "Snapshot" },
   { id: "session", label: "Dados da Sessão" },
   { id: "drivers", label: "Pilotos & Timing" },
   { id: "weather", label: "Clima" },
@@ -65,19 +65,19 @@ export default function ApiDocsPage(): JSX.Element {
       <div className="max-w-7xl mx-auto px-4">
         <div className="mb-12">
           <div className="flex items-center gap-2 mb-2">
-            <Badge color="red">GraphQL</Badge>
-            <Badge color="green">Local</Badge>
-            <Badge>v2.5+</Badge>
+            <Badge color="red">REST</Badge>
+            <Badge color="green">SignalR</Badge>
+            <Badge>Snapshot</Badge>
           </div>
           <h1 className="text-white text-4xl font-black uppercase tracking-tight mb-3">
             F1 Live Timing API
           </h1>
           <p className="text-gray-400 text-lg max-w-3xl">
-            Documentação completa da API GraphQL do F1 MultiViewer. Acesse dados em tempo real do feed oficial de Live Timing da Fórmula 1.
+            Documentação da API interna de Live Timing baseada em SignalR. Acesse snapshots normalizados do feed oficial da Fórmula 1.
           </p>
           <div className="mt-4 flex items-center gap-2 bg-[#1a1a1a] border border-gray-800 rounded-lg px-4 py-2 w-fit">
             <span className="w-2 h-2 rounded-full bg-green-400" />
-            <code className="text-gray-400 text-sm font-mono">http://localhost:10101/api/graphql</code>
+            <code className="text-gray-400 text-sm font-mono">/[locale]/api/live-timing</code>
           </div>
         </div>
 
@@ -103,62 +103,54 @@ export default function ApiDocsPage(): JSX.Element {
           <div className="lg:col-span-3">
             <Section id="overview" title="Visão Geral">
               <p className="text-gray-400 mb-4">
-                O F1 MultiViewer expõe uma API GraphQL local que fornece acesso em tempo real aos dados do Live Timing oficial da F1. 
-                Não requer autenticação e está disponível enquanto o MultiViewer estiver em execução.
+                A aplicação mantém uma conexão SignalR server-side com o Live Timing oficial da F1 e expõe snapshots normalizados pela API interna. 
+                O navegador nunca acessa F1MV/MultiViewer nem endpoints locais externos.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-[#1a1a1a] border border-gray-800 rounded-lg p-4">
-                  <div className="text-red-500 font-bold text-lg mb-1">GraphQL</div>
-                  <div className="text-gray-400 text-sm">API moderna com type-safe</div>
+                  <div className="text-red-500 font-bold text-lg mb-1">SignalR</div>
+                  <div className="text-gray-400 text-sm">Feed oficial normalizado</div>
                 </div>
                 <div className="bg-[#1a1a1a] border border-gray-800 rounded-lg p-4">
                   <div className="text-green-500 font-bold text-lg mb-1">Tempo Real</div>
-                  <div className="text-gray-400 text-sm">Polling a cada 500ms-1s</div>
+                  <div className="text-gray-400 text-sm">Snapshot compartilhado no servidor</div>
                 </div>
                 <div className="bg-[#1a1a1a] border border-gray-800 rounded-lg p-4">
-                  <div className="text-blue-500 font-bold text-lg mb-1">Sem Auth</div>
-                  <div className="text-gray-400 text-sm">Acesso direto via localhost</div>
+                  <div className="text-blue-500 font-bold text-lg mb-1">API interna</div>
+                  <div className="text-gray-400 text-sm">Acesso pelo mesmo origin</div>
                 </div>
               </div>
             </Section>
 
             <Section id="connection" title="Conexão">
               <SubSection title="Endpoint">
-                <Code>{`POST http://localhost:10101/api/graphql
-Content-Type: application/json`}</Code>
+                <Code>{`GET /en/api/live-timing
+Cache-Control: no-store`}</Code>
               </SubSection>
 
               <SubSection title="Exemplo Fetch (JavaScript)">
-                <Code>{`const response = await fetch("http://localhost:10101/api/graphql", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    query: "{ f1LiveTimingState { SessionInfo } }"
-  })
+                <Code>{`const response = await fetch("/en/api/live-timing", {
+  method: "GET",
+  cache: "no-store"
 })
 const { data } = await response.json()
-console.log(data.f1LiveTimingState.SessionInfo)`}</Code>
+console.log(data.SessionInfo)`}</Code>
               </SubSection>
 
               <SubSection title="Exemplo cURL">
-                <Code>{`curl -X POST http://localhost:10101/api/graphql \\
-  -H "Content-Type: application/json" \\
-  -d '{"query": "{ version }"}'`}</Code>
+                <Code>{`curl -i http://localhost:3000/en/api/live-timing`}</Code>
               </SubSection>
             </Section>
 
-            <Section id="queries" title="Queries Disponíveis">
-              <Field name="version" type="String!" desc="Versão do servidor F1 MultiViewer" example='"2.5.1"' />
-              <Field name="systemInfo" type="SystemInfo!" desc="Informações do sistema (plataforma, arquitetura)" />
-              <Field name="f1LiveTimingState" type="F1LiveTimingState" desc="Estado completo do Live Timing — query principal" />
-              <Field name="f1LiveTimingClock" type="F1LiveTimingClock" desc="Relógio interno (trackTime, systemTime, paused)" />
-              <Field name="players" type="[Player!]!" desc="Lista de players/streams ativos" />
-              <Field name="activeSubscriptions" type="[Subscription!]!" desc="Assinaturas F1TV ativas" />
+            <Section id="snapshot" title="Snapshot Disponível">
+              <Field name="data" type="F1LiveTimingRawState" desc="Estado normalizado do Live Timing retornado por /api/live-timing" />
+              <Field name="meta" type="SnapshotMeta" desc="Identificador, horário de captura, resumo e indicador de snapshot stale" />
+              <Field name="stats" type="SnapshotStoreStats" desc="Métricas do snapshot store, incluindo source=signalr e estado da ponte SignalR" />
             </Section>
 
             <Section id="session" title="Dados da Sessão">
               <p className="text-gray-400 mb-4">
-                Campos disponíveis em <code className="text-yellow-400">f1LiveTimingState</code>:
+                Campos disponíveis em <code className="text-yellow-400">data</code>:
               </p>
 
               <Field 
@@ -196,15 +188,19 @@ console.log(data.f1LiveTimingState.SessionInfo)`}</Code>
                 example='{ "CurrentLap": 35, "TotalLaps": 78 }'
               />
 
-              <SubSection title="Exemplo: Query de Sessão Completa">
-                <Code>{`{
-  f1LiveTimingState {
-    SessionInfo
-    SessionStatus
-    TrackStatus
-    ExtrapolatedClock
-    LapCount
-  }
+              <SubSection title="Exemplo: Leitura de Sessão Completa">
+                <Code>{`const response = await fetch("/en/api/live-timing", {
+  method: "GET",
+  cache: "no-store"
+})
+const { data } = await response.json()
+
+const session = {
+  info: data.SessionInfo,
+  status: data.SessionStatus,
+  track: data.TrackStatus,
+  clock: data.ExtrapolatedClock,
+  lapCount: data.LapCount,
 }`}</Code>
               </SubSection>
             </Section>
@@ -370,27 +366,22 @@ console.log(data.f1LiveTimingState.SessionInfo)`}</Code>
 
             <Section id="examples" title="Exemplos Práticos">
               <SubSection title="1. Dashboard de Sessão Completo">
-                <Code>{`const query = \`{
-  f1LiveTimingState {
-    SessionInfo
-    SessionStatus
-    TrackStatus
-    ExtrapolatedClock
-    WeatherData
-    DriverList
-    TimingData
-    TimingAppData
-    TopThree
-  }
-}\`
-
-const response = await fetch("http://localhost:10101/api/graphql", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ query })
+                <Code>{`const response = await fetch("/en/api/live-timing", {
+  method: "GET",
+  cache: "no-store"
 })
 const { data } = await response.json()
-const state = data.f1LiveTimingState`}</Code>
+const state = {
+  sessionInfo: data.SessionInfo,
+  sessionStatus: data.SessionStatus,
+  trackStatus: data.TrackStatus,
+  clock: data.ExtrapolatedClock,
+  weather: data.WeatherData,
+  drivers: data.DriverList,
+  timing: data.TimingData,
+  timingApp: data.TimingAppData,
+  topThree: data.TopThree,
+}`}</Code>
               </SubSection>
 
               <SubSection title="2. Polling com useEffect (React)">
@@ -401,15 +392,12 @@ export function useLiveTiming() {
   
   useEffect(() => {
     const fetch = async () => {
-      const res = await fetch("http://localhost:10101/api/graphql", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          query: "{ f1LiveTimingState { TimingData } }"
-        })
+      const res = await fetch("/en/api/live-timing", {
+        method: "GET",
+        cache: "no-store"
       })
       const json = await res.json()
-      setData(json.data.f1LiveTimingState)
+      setData(json.data)
     }
     
     fetch() // Primeira chamada

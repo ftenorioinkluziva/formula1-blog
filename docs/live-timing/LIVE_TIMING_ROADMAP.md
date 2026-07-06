@@ -1,6 +1,6 @@
 # Live Timing — Roadmap & Arquitetura
 
-> Última atualização: 2026-02-28 (endpoint configurável via env var + servidor Hetzner)
+> Última atualização: 2026-02-28 (SignalR local + endpoint configurável via env var)
 
 ---
 
@@ -15,7 +15,7 @@
 | Cache | Redis |
 | UI | Shadcn UI + Radix + Tailwind CSS v4 + Recharts |
 | i18n | next-intl (en / pt / es) |
-| Live Timing | GraphQL (`F1MV_API_URL` → Snapshot Store → API interna) |
+| Live Timing | SignalR (`SIGNALR_HUB_URL` → Snapshot Store → API interna) |
 | Observabilidade | NDJSON file log + relatório automático pós-sessão |
 
 ---
@@ -121,7 +121,7 @@
 ## 🔄 Fluxo de Dados
 
 ```
-GraphQL (process.env.F1MV_API_URL ?? "http://localhost:10101/api/graphql")
+SignalR (process.env.SIGNALR_HUB_URL ?? "https://livetiming.formula1.com/signalrcore")
     ↓
 Snapshot Store (servidor, TTL adaptativo + dedupe in-flight)
     ↓
@@ -220,7 +220,7 @@ components/live-timing/
     └── WeatherWidget.tsx
 
 lib/live-timing/
-├── api.ts          # fetchLiveTiming() — rota interna + fallback GraphQL + dedupe/microcache
+├── api.ts          # fetchLiveTiming() — rota interna + dedupe/microcache
 ├── types.ts        # Todas as interfaces TypeScript
 ├── parsers.ts      # 20+ funções de parse (raw → normalizado)
 ├── formatters.ts   # formatGap(), parseLapTimeToMs()
@@ -392,33 +392,18 @@ import { Link } from '@/lib/i18n/routing'
 
 ## 📅 Histórico de Versões
 
-### v3.9 — Fev/2026 — Endpoint Configurável via Env Var + Servidor Hetzner
+### v3.9 — Fev/2026 — Endpoint Configurável via Env Var + Servidor Hetzner (obsoleto)
 
-**Contexto:** MultiViewer precisa estar logado no F1 TV para expor dados reais. Em produção, o app precisa apontar para um servidor remoto onde o MultiViewer roda autenticado.
+**Contexto histórico:** esta versão usava F1MV/MultiViewer. Esse caminho foi removido; o runtime atual usa somente SignalR.
 
 **Mudanças principais:**
-- `lib/live-timing/constants.ts`: `GQL_ENDPOINT` passou de string hardcoded para `process.env.F1MV_API_URL ?? "http://localhost:10101/api/graphql"`.
-- `.env.local`: variável `F1MV_API_URL=http://135.181.47.220:10101/api/graphql` adicionada apontando para o servidor Hetzner.
-
-**Infraestrutura do servidor Hetzner (135.181.47.220):**
-- Ubuntu 24.04, CX22 (2 vCPU, 4 GB RAM)
-- MultiViewer instalado em `/opt/multiviewer/` (binário portátil `.zip`)
-- Display virtual via `Xvfb :99`
-- Dois serviços systemd: `xvfb.service` + `multiviewer.service` (auto-restart)
-- Porta 10101 aberta via ufw
-- GraphQL API: `http://135.181.47.220:10101/api/graphql`
-
-**Acesso visual ao MultiViewer (para login no F1 TV):**
-- Instalar x11vnc no servidor: `apt install x11vnc`
-- Iniciar VNC: `x11vnc -display :99 -forever -nopw -port 5900`
-- Conectar via VNC client: `135.181.47.220:5900`
-- Fazer login no F1 TV pelo MultiViewer — necessário antes de cada corrida
+- Substituído posteriormente por SignalR server-side e API interna `/[locale]/api/live-timing`.
 
 **Variáveis de ambiente:**
 
 | Variável | Padrão | Descrição |
 |---|---|---|
-| `F1MV_API_URL` | `http://localhost:10101/api/graphql` | URL do endpoint GraphQL do MultiViewer |
+| `SIGNALR_HUB_URL` | `https://livetiming.formula1.com/signalrcore` | URL do hub SignalR ou proxy equivalente |
 
 ---
 
@@ -439,7 +424,7 @@ Decisão de produto: o sistema não utilizará mais dados de `CarData` (RPM, vel
 - `lib/live-timing/types.ts` — removidas interface `Telemetry` e campo `telemetry` de `LiveTimingState` e `CarData` de `F1LiveTimingRawState`
 - `lib/live-timing/constants.ts` — removido `TELEMETRY_CHANNELS`
 - `lib/live-timing/parsers.ts` — removida `parseTelemetry()`
-- `lib/live-timing/api.ts` + `snapshot-store.ts` — `CarData` removido do GraphQL query
+- `lib/live-timing/api.ts` + `snapshot-store.ts` — `CarData` removido do payload de Live Timing
 - `app/[locale]/api/live-timing/route.ts` — modo `qualifying-car-comparison` removido
 - `lib/db/schema.ts` — tabela `telemetrySnapshots` removida
 - `lib/db/session-analytics.ts`, `session-analytics-types.ts` — campos de telemetria removidos

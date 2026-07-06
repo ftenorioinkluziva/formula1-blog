@@ -5,44 +5,62 @@
 
 Aplicação Next.js com foco em conteúdo e live timing de Fórmula 1.
 
-## Setup rápido
+## Setup rápido local
 
-- Instalar dependências: `pnpm install`
-- Criar `.env.local` com base em `.env.example`
-- Aplicar schema: `pnpm db:migrate`
-- Popular dados (calendário completo): `pnpm db:seed`
-- Rodar app: `pnpm dev`
+### Com Docker em desenvolvimento
 
-## Deploy na Hetzner
+Este é o caminho principal para rodar a aplicação nesta máquina ou em outra máquina local.
 
-Para produção com live timing via SignalR, prefira rodar a aplicação inteira em um processo persistente na VPS, e não em ambiente serverless.
+1. Criar `.env.local` com base em `.env.example`.
+2. Subir banco e app:
 
-Arquivos incluídos para isso:
+```bash
+docker compose -f docker-compose.dev.yml up -d --build
+```
 
-- `Dockerfile`
-- `docker-compose.hetzner.yml`
-- `.env.example`
+3. Acessar a aplicação em `http://localhost:3010`.
+4. Aplicar migrations e seed dentro do container quando necessário:
 
-Passos mínimos:
+```bash
+docker compose -f docker-compose.dev.yml exec f1_blog pnpm db:migrate
+docker compose -f docker-compose.dev.yml exec f1_blog pnpm db:seed
+```
 
-1. Criar `.env.production` com base em `.env.example`
-2. Preencher no mínimo:
-   - `NEXTAUTH_URL`
-   - `NEXTAUTH_SECRET`
-   - `DATABASE_URL`
-   - `F1TV_TOKEN`
-   - `F1TV_EMAIL` e `F1TV_PASSWORD` para renovacao automatica do token F1TV
-   - `LIVE_TIMING_SOURCE=signalr`
-   - `SIGNALR_HUB_URL` opcional; use para apontar o SignalR para um WebSocket proxy, ex: `https://f1tv-proxy.blackboxinovacao.com.br/signalrcore`
-   - `AUTO_CONNECT_ENABLED=1`
-   - `AUTO_POST_ROUND_ENABLED=1` para reconciliacao automatica de sprint/race
-3. Subir com `docker compose -f docker-compose.hetzner.yml up -d --build`
-4. Colocar um proxy reverso na frente apontando para a porta `3000`
+O `docker-compose.dev.yml` roda `pnpm dev` dentro do container, monta o código local em `/app` e mantém `node_modules` e `.next` em volumes Docker. Esse fluxo evita `next build` em cada subida.
 
-Observações:
+O bot do Telegram é opcional e não sobe no comando padrão. Para iniciar também o bot:
 
-- Em VPS persistente, o scheduler e a conexão SignalR permanecem vivos no mesmo processo, então o `/live-timing` funciona no modelo atual.
-- Se quiser manter fallback legado, deixe `F1MV_API_URL` apontando para o endpoint remoto do MultiViewer/Hetzner, nunca para `localhost` em produção.
+```bash
+docker compose -f docker-compose.dev.yml --profile bot up -d --build
+```
+
+Workers locais sobem junto com o app no fluxo dev. O serviço `f1_blog` delega os loops persistentes para `f1_workers` para evitar duplicação dentro do processo web.
+
+### Docker standalone local
+
+Use o `docker-compose.yml` somente quando quiser testar a imagem standalone de produção local. Esse caminho roda `next build` e pode demorar bastante no Docker Desktop:
+
+```bash
+docker compose up -d --build
+```
+
+### Sem Docker
+
+```bash
+pnpm install
+pnpm db:migrate
+pnpm db:seed
+pnpm dev
+```
+
+Para rodar sem Docker, ajuste `DATABASE_URL` no `.env.local` para o Postgres acessível pela máquina host.
+
+## Live Timing local
+
+- O Live Timing usa somente SignalR; não há fallback para F1 MultiViewer/F1MV.
+- `AUTO_CONNECT_ENABLED=1` ativa o scheduler que conecta 60 minutos antes da próxima sessão cadastrada.
+- `SIGNALR_HUB_URL` é opcional. Se vazio, usa `https://livetiming.formula1.com/signalrcore`.
+- O endpoint de status local é `http://localhost:3010/en/api/f1tv/status`.
 
 ### Automacao pos-etapa
 
@@ -64,30 +82,11 @@ Quando `F1TV_EMAIL` e `F1TV_PASSWORD` estao configurados, a aplicacao inicia um 
 - encontra a proxima primeira sessao do fim de semana (`Practice 1`, `Pratice 1`, `P1` ou `FP1`)
 - faz a primeira tentativa exatamente em `start_time_utc - 24h`
 - se falhar, tenta novamente de hora em hora ate conseguir ou ate a sessao comecar
-- quando `F1TV_PROXY_URL` esta configurado, faz a autenticacao pelo endpoint `/f1tv/auth` do proxy com o header `x-f1tv-proxy-secret`; use `F1TV_PROXY_AUTH_URL` para sobrescrever a URL exata
+- quando `F1TV_PROXY_URL` esta configurado, faz a autenticacao pelo endpoint `/f1tv/auth` do proxy local/rede com o header `x-f1tv-proxy-secret`; use `F1TV_PROXY_AUTH_URL` para sobrescrever a URL exata
 - ativa o token em memoria e persiste em Redis (`f1tv:token`) e em `.env.local` quando o arquivo existir
 - persiste o estado por sessao em Redis para evitar renovacoes repetidas e controlar o proximo retry
 
 Defina `F1TV_AUTO_RENEW_ENABLED=0` para desativar esse worker.
-
-### GitHub Actions
-
-O repositório agora inclui `.github/workflows/deploy-hetzner.yml` para deploy automático na VPS.
-
-Secrets necessários no GitHub:
-
-- `HETZNER_HOST` — ex: `135.181.47.220`
-- `HETZNER_USER` — ex: `root`
-- `HETZNER_SSH_KEY` — chave privada usada para acessar a VPS
-- `HETZNER_DEPLOY_PATH` — ex: `/opt/v0-formula-1-blog/app`
-
-Premissas no servidor:
-
-- o diretório de deploy já existe
-- `.env.production` já existe no servidor e não é sobrescrito pelo workflow
-- Docker está instalado
-- a rede `npm_default` do Nginx Proxy Manager existe
-- o Proxy Host do NPM aponta para `f1_blog:3000`
 
 ## Fluxo de migrações (Drizzle)
 
@@ -208,10 +207,10 @@ Cloudinary (armazenamento de mídia):
 - `CLOUDINARY_API_KEY`
 - `CLOUDINARY_API_SECRET`
 
-Live Timing (MultiViewer):
+Live Timing (SignalR):
 
-- `F1MV_API_URL` — endpoint GraphQL do MultiViewer (padrão: `http://localhost:10101/api/graphql`)
-  - Produção: aponte para o servidor Hetzner (`http://135.181.47.220:10101/api/graphql`)
+- `SIGNALR_HUB_URL` — opcional; padrão: `https://livetiming.formula1.com/signalrcore`
+- `AUTO_CONNECT_ENABLED=1` — ativa conexão automática 60 min antes da próxima sessão
 
 Recomendadas:
 

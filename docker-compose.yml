@@ -15,9 +15,9 @@ services:
       - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U f1blog_user -d f1blog"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
+      interval: 3s
+      timeout: 3s
+      retries: 10
 
   f1_blog:
     build:
@@ -29,11 +29,14 @@ services:
       postgres:
         condition: service_healthy
     env_file:
-      - .env.deploy
+      - .env.local
+    environment:
+      INSTRUMENTATION_WORKERS_ENABLED: "1"
+      RECORDING_ENABLED: "0"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
-      - "3001:3000"
+      - "3010:3000"
     volumes:
       - f1_blog_recordings:/app/data/recordings
       - ./data/news-sync:/app/data/news-sync
@@ -49,11 +52,30 @@ services:
       postgres:
         condition: service_healthy
     env_file:
-      - .env.deploy
+      - .env.local
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
       - ./data/news-sync:/app/data/news-sync
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: worker
+    container_name: f1_worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env.local
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - f1_blog_recordings:/app/data/recordings
+      - ./data/news-sync:/app/data/news-sync
+      - ./f1_2026_fotos:/app/f1_2026_fotos
 
 
 volumes:

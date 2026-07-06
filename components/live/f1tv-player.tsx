@@ -222,19 +222,13 @@ export function F1TVPlayer({
           }
           player.updateSettings(settings)
 
-          if (ttmlRef.current && typeof player.attachTTMLRenderingDiv === "function") {
-            try {
-              player.attachTTMLRenderingDiv(ttmlRef.current)
-            } catch (error) {
-              console.warn("[f1tv-player] TTML setup failed, continuing without subtitle rendering", error)
-            }
-          }
-
           if (laURL) {
             const licenseUrl = getPlaybackLicenseUrl(locale, laURL)
             const protectionData: Record<string, unknown> = {
               serverURL: licenseUrl,
               withCredentials: false,
+              audioRobustness: "SW_SECURE_DECODE",
+              videoRobustness: "SW_SECURE_DECODE",
             }
             if (drmToken) {
               protectionData.httpRequestHeaders = { "x-f1tv-drm-token": drmToken }
@@ -243,6 +237,14 @@ export function F1TVPlayer({
           }
 
           player.initialize(video, streamUrl, autoPlay)
+
+          if (ttmlRef.current && typeof player.attachTTMLRenderingDiv === "function") {
+            try {
+              player.attachTTMLRenderingDiv(ttmlRef.current)
+            } catch {
+              // Subtitles are optional for F1TV playback; ignore dash.js text renderer setup failures.
+            }
+          }
 
           playerRef.current = {
             destroy: () => player.destroy(),

@@ -1,6 +1,5 @@
 import "server-only"
 
-import { GQL_ENDPOINT, LIVE_TIMING_SOURCE } from "@/lib/live-timing/constants"
 import type { F1LiveTimingRawState } from "@/lib/live-timing/types"
 import { appendLiveTimingLog } from "@/lib/live-timing/persistence/live-timing-file-log"
 import { persistLiveTimingPhase1 } from "@/lib/db/race-control-messages"
@@ -66,120 +65,6 @@ function buildSnapshotSummary(rawState: F1LiveTimingRawState): LiveTimingSnapsho
   }
 }
 
-function extractJsonObjects(input: string): string[] {
-  const segments: string[] = []
-  let depth = 0
-  let inString = false
-  let escaping = false
-  let objectStart = -1
-
-  for (let index = 0; index < input.length; index += 1) {
-    const char = input[index]
-
-    if (escaping) {
-      escaping = false
-      continue
-    }
-
-    if (char === "\\") {
-      if (inString) escaping = true
-      continue
-    }
-
-    if (char === '"') {
-      inString = !inString
-      continue
-    }
-
-    if (inString) continue
-
-    if (char === "{") {
-      if (depth === 0) objectStart = index
-      depth += 1
-      continue
-    }
-
-    if (char === "}") {
-      if (depth === 0) continue
-      depth -= 1
-      if (depth === 0 && objectStart >= 0) {
-        const segment = input.slice(objectStart, index + 1).trim()
-        if (segment) segments.push(segment)
-        objectStart = -1
-      }
-    }
-  }
-
-  if (segments.length > 0) return segments
-
-  const fallbackSegments = input
-    .split("\n")
-    .map((segment) => segment.trim())
-    .filter((segment) => segment.length > 0)
-
-  return fallbackSegments.length > 0 ? fallbackSegments : [input.trim()]
-}
-
-async function fetchFromF1MV(): Promise<F1LiveTimingRawState | null> {
-  const response = await fetch(GQL_ENDPOINT, {
-    method: "POST",
-    cache: "no-store",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      query: `{ f1LiveTimingState {
-        DriverList TimingData TimingAppData TimingStats
-        WeatherData WeatherDataSeries SessionInfo SessionStatus ExtrapolatedClock TopThree TrackStatus
-        RaceControlMessages TeamRadio LapCount LapSeries Position
-        PitLaneTimeCollection ChampionshipPrediction
-        ContentStreams AudioStreams SessionData
-      }
-      f1LiveTimingClock { paused systemTime trackTime liveTimingStartTime }
-      }`,
-    }),
-  })
-
-  if (!response.ok) return null
-
-  const responseText = await response.text()
-
-  let parsedResponse: {
-    data?: { f1LiveTimingState?: F1LiveTimingRawState; f1LiveTimingClock?: Record<string, unknown> }
-  } | null = null
-
-  try {
-    parsedResponse = JSON.parse(responseText) as {
-      data?: { f1LiveTimingState?: F1LiveTimingRawState; f1LiveTimingClock?: Record<string, unknown> }
-    }
-  } catch {
-    for (const segment of extractJsonObjects(responseText)) {
-      try {
-        const candidate = JSON.parse(segment) as {
-          data?: { f1LiveTimingState?: F1LiveTimingRawState; f1LiveTimingClock?: Record<string, unknown> }
-        }
-
-        if (candidate?.data?.f1LiveTimingState) {
-          parsedResponse = candidate
-          break
-        }
-      } catch {
-        // Skip malformed segment and keep trying.
-      }
-    }
-  }
-
-  if (!parsedResponse) {
-    return null
-  }
-
-  const state = parsedResponse.data?.f1LiveTimingState || null
-  if (!state) return null
-
-  return {
-    ...state,
-    LiveTimingClock: parsedResponse.data?.f1LiveTimingClock || null,
-  }
-}
-
 let signalRInitialized = false
 
 async function initSignalRIfNeeded(): Promise<void> {
@@ -240,7 +125,7 @@ async function initSignalRIfNeeded(): Promise<void> {
     console.log("[snapshot-store] SignalR bridge initialized — push mode active")
   } catch (err) {
     signalRInitialized = false
-    console.error("[snapshot-store] SignalR init failed, will fall back to F1MV:", err)
+    console.error("[snapshot-store] SignalR init failed:", err)
   }
 }
 
@@ -251,18 +136,14 @@ function fetchFromSignalR(): F1LiveTimingRawState | null {
 }
 
 async function fetchUpstreamLiveTimingState(): Promise<F1LiveTimingRawState | null> {
-  if (LIVE_TIMING_SOURCE === "signalr") {
-    await initSignalRIfNeeded()
+  await initSignalRIfNeeded()
 
-    if (isSignalRBridgeActive()) {
-      return fetchFromSignalR()
-    }
-
-    console.warn("[snapshot-store] SignalR not active — returning no snapshot")
-    return null
+  if (isSignalRBridgeActive()) {
+    return fetchFromSignalR()
   }
 
-  return fetchFromF1MV()
+  console.warn("[snapshot-store] SignalR not active — returning no snapshot")
+  return null
 }
 
 function getLatestSnapshot(): LiveTimingSnapshot | null {
@@ -423,7 +304,7 @@ export function getLiveTimingSnapshotStoreStats(): SnapshotStoreStats {
     latestSnapshotId: latest?.id || null,
     latestSnapshotAgeMs: latest ? Date.now() - latest.capturedAtMs : null,
     historySize: snapshotHistory.length,
-    source: LIVE_TIMING_SOURCE,
+    source: "signalr",
     signalRActive: isSignalRBridgeActive(),
   }
 }

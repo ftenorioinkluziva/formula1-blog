@@ -9,6 +9,7 @@ node_modules
 
 logs
 data/recordings
+data/news-sync
 public/videos
 
 test-results
@@ -20,3 +21,5 @@ coverage
 
 .DS_Store
 Thumbs.db
+
+f1_2026_fotos

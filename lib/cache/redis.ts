@@ -1,11 +1,13 @@
 import { Redis } from "@upstash/redis"
+import { createClient } from "redis"
 
-// Upstash Redis client — HTTP-based, no persistent connections, serverless-safe
-// Env vars: UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN
-// Set via Vercel Marketplace → Storage → Upstash Redis → Connect
+// Redis client.
+// - Upstash REST: UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN
+// - Redis TCP: REDIS_URL, e.g. redis://default:password@host:port
 
 declare global {
   var __f1BlogUpstashClient: Redis | undefined
+  var __f1BlogRedisClient: Promise<ReturnType<typeof createClient>> | undefined
 }
 
 function getUpstashClient(): Redis | null {
@@ -26,6 +28,23 @@ function getUpstashClient(): Redis | null {
   }
 
   return globalThis.__f1BlogUpstashClient
+}
+
+async function getTcpRedisClient(): Promise<ReturnType<typeof createClient> | null> {
+  const url = process.env.REDIS_URL
+  if (!url) {
+    return null
+  }
+
+  if (!globalThis.__f1BlogRedisClient) {
+    const client = createClient({ url })
+    client.on("error", (err) => {
+      console.warn("[redis] TCP client error:", err instanceof Error ? err.message : err)
+    })
+    globalThis.__f1BlogRedisClient = client.connect().then(() => client)
+  }
+
+  return await globalThis.__f1BlogRedisClient
 }
 
 export interface AppRedisAdapter {
@@ -51,6 +70,25 @@ export async function getRedisClient(): Promise<AppRedisAdapter | null> {
       },
       async del(key) {
         await upstash.del(key)
+      },
+    }
+  }
+
+  const tcp = await getTcpRedisClient()
+  if (tcp) {
+    return {
+      async get(key) {
+        return await tcp.get(key)
+      },
+      async set(key, value, options) {
+        if (options?.EX) {
+          await tcp.set(key, value, { EX: options.EX })
+        } else {
+          await tcp.set(key, value)
+        }
+      },
+      async del(key) {
+        await tcp.del(key)
       },
     }
   }

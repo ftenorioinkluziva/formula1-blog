@@ -64,6 +64,38 @@ function startPhotoSyncScheduler() {
   console.log(`[workers] Photo sync scheduler started (max galleries: ${maxGalleries})`)
 }
 
+function startTopicScheduler() {
+  const topicDelayMinutes = numericEnv("TOPIC_SYNC_DELAY_MINUTES", 60)
+  const topicRetryMinutes = numericEnv("TOPIC_SYNC_RETRY_MINUTES", 30)
+  const topicWindowHours = numericEnv("TOPIC_SYNC_WINDOW_HOURS", 6)
+  const topicMaxAttempts = numericEnv("TOPIC_SYNC_MAX_ATTEMPTS", 3)
+
+  const child = spawn(
+    "pnpm",
+    [
+      "db:session-scheduler",
+      "--topics",
+      "--topic-delay-minutes",
+      String(topicDelayMinutes),
+      "--topic-retry-minutes",
+      String(topicRetryMinutes),
+      "--topic-window-hours",
+      String(topicWindowHours),
+      "--topic-max-attempts",
+      String(topicMaxAttempts),
+    ],
+    {
+      cwd: process.cwd(),
+      env: process.env,
+      detached: true,
+      stdio: "inherit",
+    },
+  )
+
+  child.unref()
+  console.log(`[workers] Topic scheduler started (delay: ${topicDelayMinutes}min, retry: ${topicRetryMinutes}min)`)
+}
+
 async function main() {
   console.log("[workers] Starting local background workers")
 
@@ -90,6 +122,17 @@ async function main() {
       setTimeout(startPhotoSyncScheduler, delayMs)
     } else {
       startPhotoSyncScheduler()
+    }
+  }
+
+  if (process.env.AUTO_TOPIC_SYNC_ENABLED !== "0") {
+    const delayMs = numericEnv("TOPIC_SYNC_START_DELAY_MS", 30_000)
+
+    if (delayMs > 0) {
+      console.log(`[workers] Topic scheduler scheduled in ${Math.round(delayMs / 1000)}s`)
+      setTimeout(startTopicScheduler, delayMs)
+    } else {
+      startTopicScheduler()
     }
   }
 

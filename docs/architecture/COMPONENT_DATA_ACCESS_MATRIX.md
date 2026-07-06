@@ -6,7 +6,7 @@
 |---|---|---|---|---|
 | `Navigation` | Config local | — | — | Local por design |
 | `SessionBanner` | API interna | `GET /[locale]/api/session-banner` | PostgreSQL + Redis cache | DB/API |
-| `ChampionshipPredictionCompact` | Live timing | `GET /[locale]/api/live-timing` (via `fetchLiveTiming`) | Snapshot em memória (atual), origem GraphQL | API interna |
+| `ChampionshipPredictionCompact` | Live timing | `GET /[locale]/api/live-timing` (via `fetchLiveTiming`) | Snapshot em memória (atual), origem SignalR | API interna |
 | `HeroSection` | Notícias + pilotos | `GET /[locale]/api/news`, `GET /[locale]/api/drivers` | PostgreSQL | DB/API |
 | `StandingsTicker` | Pilotos | `GET /[locale]/api/drivers` | PostgreSQL | DB/API |
 | `TeamProfiles` | Equipes | `GET /[locale]/api/teams` | PostgreSQL | DB/API |
@@ -32,9 +32,8 @@
 
 ## Observações
 
-- O único componente encontrado com acesso direto ao GraphQL (`http://localhost:10101/api/graphql`) é `components/session-panel.tsx`.
-- `session-panel` não possui uso encontrado no app atual (sem imports/uso em páginas/containers).
-- Estratégia recomendada: manter consumo de GraphQL centralizado no backend (`/api/live-timing`) para evitar fan-out de polling no cliente.
+- Não deve haver componente com acesso direto a provedor externo de Live Timing.
+- O frontend consome snapshots exclusivamente por `/api/live-timing` para evitar fan-out de polling no cliente.
 - `MultimediaSection` usa `GalleryViewer` (lightbox fullscreen) para galerias e `VideoPlayer` para vídeos — ambos montados condicionalmente fora do `<section>`.
 - `MultimediaSection` mantém contrato de `videos` na API, mas o backend retorna lista vazia após descontinuação de `media_videos`.
 - Navegação de artigos migrada de modal para rota dedicada (`/[locale]/news/[id]`) com suporte a SSR/SEO.
