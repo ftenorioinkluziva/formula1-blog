@@ -313,6 +313,9 @@ function getAssignmentTypeForSession(sessionType: string): string | null {
     return "qualifying_result"
   }
   if (sessionType === "Sprint") return "sprint_result"
+  if (sessionType.startsWith("Practice") || sessionType.includes("P1") || sessionType.includes("P2") || sessionType.includes("P3")) {
+    return "practice_report"
+  }
   return null
 }
 
@@ -363,8 +366,54 @@ async function runTopicJobs(state: SchedulerState, sessions: SessionInfo[], args
     }
   }
 
-  // 2. Fetch assignments that are due
+  // 1.5 Ensure weekend previews exist in DB for upcoming race weekends (typically scheduled on Thursday)
   const now = new Date()
+  const upcomingWeekends = await db
+    .select()
+    .from(raceWeekends)
+    .where(
+      and(
+        gte(raceWeekends.raceStartUtc, new Date(now.getTime() - 2 * 86_400_000)),
+        lte(raceWeekends.raceStartUtc, new Date(now.getTime() + 4 * 86_400_000))
+      )
+    )
+
+  for (const wknd of upcomingWeekends) {
+    const existing = await db
+      .select()
+      .from(editorialAssignments)
+      .where(
+        and(
+          eq(editorialAssignments.season, wknd.season),
+          eq(editorialAssignments.round, wknd.round),
+          eq(editorialAssignments.assignmentType, "weekend_preview")
+        )
+      )
+      .limit(1)
+
+    if (existing.length === 0) {
+      const canonical = `${wknd.grandPrixName} - Expectativas e Preview`
+      console.log(`[topic] Criando novo assignment de Preview para ${canonical}`)
+      if (!args.dryRun) {
+        await db.insert(editorialAssignments).values({
+          source: "scheduler",
+          rawInput: canonical,
+          topicCanonical: canonical,
+          assignmentType: "weekend_preview",
+          editorialDesk: "Preview",
+          season: wknd.season,
+          round: wknd.round,
+          sessionId: null,
+          status: "new",
+          locale: "pt",
+          attemptCount: 0,
+          nextAttemptAt: now,
+        })
+      }
+    }
+  }
+
+  // 2. Fetch assignments that are due
   const due = await db
     .select()
     .from(editorialAssignments)
