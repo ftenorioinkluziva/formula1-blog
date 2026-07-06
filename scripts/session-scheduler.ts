@@ -368,31 +368,38 @@ async function runTopicJobs(state: SchedulerState, sessions: SessionInfo[], args
 
   // 1.5 Ensure weekend previews exist in DB for upcoming race weekends (typically scheduled on Thursday)
   const now = new Date()
-  const upcomingWeekends = await db
-    .select()
-    .from(raceWeekends)
+  const upcomingRaceSessions = await db
+    .select({
+      weekendId: raceWeekends.id,
+      season: raceWeekends.season,
+      round: raceWeekends.round,
+      grandPrixName: raceWeekends.grandPrixName,
+    })
+    .from(raceSessions)
+    .innerJoin(raceWeekends, eq(raceSessions.weekendId, raceWeekends.id))
     .where(
       and(
-        gte(raceWeekends.raceStartUtc, new Date(now.getTime() - 2 * 86_400_000)),
-        lte(raceWeekends.raceStartUtc, new Date(now.getTime() + 4 * 86_400_000))
+        eq(raceSessions.sessionType, "Race"),
+        gte(raceSessions.startTimeUtc, new Date(now.getTime() - 2 * 86_400_000)),
+        lte(raceSessions.startTimeUtc, new Date(now.getTime() + 4 * 86_400_000))
       )
     )
 
-  for (const wknd of upcomingWeekends) {
+  for (const session of upcomingRaceSessions) {
     const existing = await db
       .select()
       .from(editorialAssignments)
       .where(
         and(
-          eq(editorialAssignments.season, wknd.season),
-          eq(editorialAssignments.round, wknd.round),
+          eq(editorialAssignments.season, session.season),
+          eq(editorialAssignments.round, session.round),
           eq(editorialAssignments.assignmentType, "weekend_preview")
         )
       )
       .limit(1)
 
     if (existing.length === 0) {
-      const canonical = `${wknd.grandPrixName} - Expectativas e Preview`
+      const canonical = `${session.grandPrixName} - Expectativas e Preview`
       console.log(`[topic] Criando novo assignment de Preview para ${canonical}`)
       if (!args.dryRun) {
         await db.insert(editorialAssignments).values({
@@ -401,8 +408,8 @@ async function runTopicJobs(state: SchedulerState, sessions: SessionInfo[], args
           topicCanonical: canonical,
           assignmentType: "weekend_preview",
           editorialDesk: "Preview",
-          season: wknd.season,
-          round: wknd.round,
+          season: session.season,
+          round: session.round,
           sessionId: null,
           status: "new",
           locale: "pt",
