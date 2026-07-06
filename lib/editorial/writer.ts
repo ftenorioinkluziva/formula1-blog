@@ -85,6 +85,11 @@ Ensure you respond in Brazilian Portuguese.
 Ensure there are no internal headings, no markdown in title/excerpt, and body paragraphs are clean text.
 Write detailed, rich paragraphs rather than short, robotic sentences. Match the tone of a professional F1 chronicler.
 
+JSON ESCAPING RULES:
+- All strings in the JSON MUST be valid and escape-safe.
+- If you write quotes inside the text (e.g., driver quotes or slang), use single quotes (') or escape double quotes as \\\" (e.g., \\\"perigoso\\\").
+- NEVER include raw unescaped double quotes (\") inside any JSON string value, as it will break the JSON parser.
+
 JSON Schema:
 {
   "title": "Clean strong title",
