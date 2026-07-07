@@ -214,6 +214,20 @@ All consumers must read from it — never hardcode dates/sessions in:
 - `components/race-detail-modal.tsx`
 - `scripts/seed-weekend-sessions.ts`
 
+### Editorial Automation Pipeline
+- **Goal:** Autogenerate rich, factually accurate Grand Prix weekend articles (Practice, Qualifying, Sprint, Race sessions and Previews) in Portuguese.
+- **Workflow:**
+  1. **Scheduler (`scripts/session-scheduler.ts`):** Scans completed sessions (last 60 days) and upcoming races (within 4 days, typically on Thursday) to insert assignments into `editorial_assignments` using a DB-based queue.
+  2. **Pipeline Orchestrator (`lib/editorial/pipeline.ts`):** Runs each due assignment:
+     - **Classification (`lib/editorial/assignment-classifier.ts`):** Matches GP names and resolves sessions.
+     - **Deduplication (`lib/editorial/dedupe.ts`):** Prevents duplicate coverage for the same session.
+     - **Source Packet Compiler (`lib/editorial/source-packet-builder.ts`):** Gathers race results, standings, pit stops, tire stints, weather, and race control logs.
+     - **AI Writing (`lib/editorial/writer.ts`):** Loads specialized templates (`resultado-gp`, `resultado-qualifying`, `preview`, `noticias`, `raio-x-tecnico`) and writes markdown-formatted sports chronicles (using H3 headers and classification tables/lists).
+     - **Fact-Checking (`lib/editorial/fact-checker.ts`):** Runs an independent audit verifying winners, standings, and events against actual sources. Rejects articles on failure.
+     - **Persistence:** Successful drafts are saved to `pending_articles` for human review.
+- **Key Commands:**
+  - `pnpm exec tsx scripts/session-scheduler.ts --topics` to execute the queue.
+
 ### Admin
 - `app/[locale]/admin/` — currently unprotected (auth TODO per README)
 - Manages news articles (`app/[locale]/admin/news/`)
