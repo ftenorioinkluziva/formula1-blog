@@ -68,6 +68,7 @@ export interface FantasyAssetListItem {
   linkedDriverId?: number
   linkedDriverSlot?: "driver_1" | "driver_2"
   price: number
+  priceDelta?: number
   currentPosition?: number
   currentPoints?: number
   trendLabel?: string
@@ -102,6 +103,11 @@ export interface FantasyBootstrapResponse {
     country: string
     location: string
   }
+  profile: {
+    id: number
+    displayName: string
+    sessionKey: string
+  } | null
   lockStatus: FantasyLockStatus
   lockAt: string | null
   budgetCap: number
@@ -146,6 +152,11 @@ export interface FantasyReviewResponse {
   }
   lockStatus: FantasyLockStatus
   lockAt: string | null
+  transfers?: {
+    freeDriverTransfersLeft: number
+    freeEngineerTransfersLeft: number
+    teamLockedUntilRound: number | null
+  }
 }
 
 export interface FantasyPredictionOptionsResponse {
@@ -198,6 +209,7 @@ export interface FantasyResultResponse {
     totalScore: number
     isOfficial: boolean
     lockedAt: string | null
+    avgRoundScore?: number
   }
   lineup: FantasyLineupState
   blocks: {

@@ -83,6 +83,26 @@ function CarouselTrack({ children }: { children: React.ReactNode }) {
 }
 
 // ---------------------------------------------------------------------------
+// Valuation delta badge helper
+// ---------------------------------------------------------------------------
+
+function PriceDeltaBadge({ delta }: { delta?: number }) {
+  if (!delta || delta === 0) return null
+  const isPositive = delta > 0
+  const formatted = Math.abs(delta).toFixed(1)
+  
+  return (
+    <span
+      className={`inline-flex items-center text-[9px] font-bold px-1 rounded-xs leading-none select-none ${
+        isPositive ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"
+      }`}
+    >
+      {isPositive ? "▲" : "▼"}${formatted}m
+    </span>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Driver carousel
 // ---------------------------------------------------------------------------
 
@@ -149,7 +169,10 @@ export function DriverPickerShelf({ items, busy, selectedDriver1, selectedDriver
               </div>
               <div className="mt-0.5 truncate text-[10px] text-zinc-500">{item.teamName}</div>
               <div className="mt-1.5 flex items-center justify-between gap-1">
-                <span className="text-[11px] font-semibold text-zinc-300">${formatFantasyCurrency(item.price)}</span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-[11px] font-semibold text-zinc-300">${formatFantasyCurrency(item.price)}</span>
+                  <PriceDeltaBadge delta={item.priceDelta} />
+                </div>
                 {slot1 && <span className="text-[9px] font-bold uppercase tracking-wide text-red-400">D1</span>}
                 {slot2 && <span className="text-[9px] font-bold uppercase tracking-wide text-amber-400">D2</span>}
               </div>
@@ -284,7 +307,10 @@ export function TeamPickerShelf({ items, busy, selectedTeam, budgetRemaining, on
             <div className="p-2">
               <div className="truncate text-[11px] font-semibold text-zinc-100">{item.name}</div>
               <div className="mt-1 flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-zinc-300">${formatFantasyCurrency(item.price)}</span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-[11px] font-semibold text-zinc-300">${formatFantasyCurrency(item.price)}</span>
+                  <PriceDeltaBadge delta={item.priceDelta} />
+                </div>
                 <span
                   className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full border"
                   style={{ color: teamColor, borderColor: `${teamColor}40`, background: `${teamColor}12` }}
@@ -359,7 +385,10 @@ export function EngineerPickerShelf({ items, busy, selectedEngineer, budgetRemai
               <div className="truncate text-[11px] font-semibold text-zinc-100 leading-tight">{item.name}</div>
               <div className="mt-0.5 truncate text-[10px] text-zinc-500">{item.teamName}</div>
               <div className="mt-1.5 flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-zinc-300">${formatFantasyCurrency(item.price)}</span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-[11px] font-semibold text-zinc-300">${formatFantasyCurrency(item.price)}</span>
+                  <PriceDeltaBadge delta={item.priceDelta} />
+                </div>
                 {busy === "engineer" && selected && <Loader2 className="h-3 w-3 animate-spin text-zinc-400" />}
               </div>
             </div>

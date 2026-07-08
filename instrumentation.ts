@@ -1,3 +1,5 @@
+export const runtime = "nodejs"
+
 export async function register() {
   const isEdgeRuntime = typeof (globalThis as { EdgeRuntime?: unknown }).EdgeRuntime !== "undefined"
   if (isEdgeRuntime) {

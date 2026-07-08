@@ -154,7 +154,6 @@ test("abre uma rodada finalizada com breakdown persistido e UI bloqueada", async
   await expect(page.getByTestId("fantasy-round-select")).toHaveValue(String(round))
   await expect(page.getByTestId("fantasy-lock-button")).toBeDisabled()
   await expect(page.getByTestId("fantasy-save-predictions-button")).toBeDisabled()
-  await expect(page.getByTestId("fantasy-score-button")).toBeEnabled()
   await expect(page.getByTestId("fantasy-result-card")).toBeVisible()
   await expect(page.getByTestId("fantasy-result-empty")).toHaveCount(0)
   await expect(page.getByTestId("fantasy-result-block-pit wall")).toBeVisible()

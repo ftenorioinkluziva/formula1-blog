@@ -109,13 +109,24 @@ export async function getFantasyContext(season: number, round: number): Promise<
     sessions[0] ??
     null
 
-  const weekendEndAt = sessions.length > 0 ? sessions[sessions.length - 1].endTimeUtc : null
+  const lockPhase = ruleset?.lockPhase ?? "fp1_start_30m"
+  let lockAt: Date | null = null
 
-  const THIRTY_MINUTES_MS = 30 * 60 * 1000
-  const lockAt =
-    fp1Session?.startTimeUtc
-      ? new Date(fp1Session.startTimeUtc.getTime() - THIRTY_MINUTES_MS)
-      : null
+  if (lockPhase === "qualifying_start") {
+    const qualiSession =
+      sessions.find((session) => session.sessionCode === "Q") ??
+      sessions.find((session) => session.sessionType.toLowerCase() === "qualifying") ??
+      null
+    lockAt = qualiSession?.startTimeUtc ?? null
+  } else {
+    const THIRTY_MINUTES_MS = 30 * 60 * 1000
+    lockAt =
+      fp1Session?.startTimeUtc
+        ? new Date(fp1Session.startTimeUtc.getTime() - THIRTY_MINUTES_MS)
+        : null
+  }
+
+  const weekendEndAt = sessions.length > 0 ? sessions[sessions.length - 1].endTimeUtc : null
   const lockStatus = resolveLockStatus(lockAt, weekendEndAt)
 
   return {
@@ -182,7 +193,7 @@ export async function getCurrentAssetPricesMap(
   season: number,
   round: number,
   assetIds: number[],
-): Promise<Map<number, number>> {
+): Promise<Map<number, { price: number; delta: number }>> {
   const db = getDb()
 
   if (!db || assetIds.length === 0) {
@@ -193,6 +204,7 @@ export async function getCurrentAssetPricesMap(
     .select({
       assetId: fantasyAssetPrices.assetId,
       price: fantasyAssetPrices.price,
+      priceDelta: fantasyAssetPrices.priceDelta,
       round: fantasyAssetPrices.round,
     })
     .from(fantasyAssetPrices)
@@ -205,11 +217,11 @@ export async function getCurrentAssetPricesMap(
     )
     .orderBy(desc(fantasyAssetPrices.round))
 
-  const prices = new Map<number, number>()
+  const prices = new Map<number, { price: number; delta: number }>()
 
   for (const row of rows) {
     if (!prices.has(row.assetId)) {
-      prices.set(row.assetId, row.price)
+      prices.set(row.assetId, { price: row.price, delta: row.priceDelta })
     }
   }
 

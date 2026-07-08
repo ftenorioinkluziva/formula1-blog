@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from "drizzle-orm"
+import { and, asc, desc, eq, inArray, lt, sql } from "drizzle-orm"
 import { getDb } from "@/lib/db/client"
 import { buildBudgetSnapshot, getCurrentAssetPricesMap, getFantasyContext, getFantasyEntry, getFantasyProfileBySessionKey, type FantasyBudgetSnapshot } from "@/lib/db/fantasy-core"
 import {
@@ -11,6 +11,7 @@ import {
   fantasyRoundHoldings,
   fantasyRoundScores,
   fantasyScoreItems,
+  raceWeekends,
   teams,
 } from "@/lib/db/schema"
 
@@ -59,6 +60,11 @@ export interface FantasyReviewState {
   }
   lockStatus: string
   lockAt: string | null
+  transfers: {
+    freeDriverTransfersLeft: number
+    freeEngineerTransfersLeft: number
+    teamLockedUntilRound: number | null
+  }
 }
 
 export interface FantasyPredictionsInput {
@@ -96,6 +102,7 @@ export interface FantasyRoundResultState {
     totalScore: number
     isOfficial: boolean
     lockedAt: string | null
+    avgRoundScore?: number
   }
   lineup: FantasyLineupState
   blocks: {
@@ -201,6 +208,35 @@ export async function ensureFantasyDraft(season: number, round: number, sessionK
         throw new Error("lock_closed")
       }
 
+      // Find the previous round's entry in this season to carry over lineup/holds
+      const [prevEntryRow] = await tx
+        .select({ entry: fantasyRoundEntries })
+        .from(fantasyRoundEntries)
+        .innerJoin(raceWeekends, eq(fantasyRoundEntries.weekendId, raceWeekends.id))
+        .where(
+          and(
+            eq(fantasyRoundEntries.profileId, profile.id),
+            eq(fantasyRoundEntries.seasonId, context.fantasySeasonId),
+            lt(raceWeekends.round, round)
+          )
+        )
+        .orderBy(desc(raceWeekends.round))
+        .limit(1)
+
+      const prevEntry = prevEntryRow?.entry ?? null
+
+      let budgetTotal = context.budgetCap
+      let budgetSpent = 0
+      let teamLockedUntilRound: number | null = null
+
+      if (prevEntry) {
+        budgetTotal = prevEntry.budgetTotal
+        budgetSpent = prevEntry.budgetSpent
+        if (prevEntry.teamLockedUntilRound && prevEntry.teamLockedUntilRound > round) {
+          teamLockedUntilRound = prevEntry.teamLockedUntilRound
+        }
+      }
+
       ;[entry] = await tx
         .insert(fantasyRoundEntries)
         .values({
@@ -208,12 +244,33 @@ export async function ensureFantasyDraft(season: number, round: number, sessionK
           seasonId: context.fantasySeasonId,
           weekendId: context.weekendId,
           status: "draft",
-          budgetTotal: context.budgetCap,
-          budgetSpent: 0,
+          budgetTotal,
+          budgetSpent,
           freeDriverTransfersLeft: context.ruleset.freeDriverTransfers,
           freeEngineerTransfersLeft: context.ruleset.freeEngineerTransfers,
+          teamLockedUntilRound,
         })
         .returning()
+
+      if (prevEntry) {
+        const prevHoldings = await tx
+          .select()
+          .from(fantasyRoundHoldings)
+          .where(eq(fantasyRoundHoldings.entryId, prevEntry.id))
+
+        if (prevHoldings.length > 0) {
+          await tx.insert(fantasyRoundHoldings).values(
+            prevHoldings.map((h) => ({
+              entryId: entry.id,
+              slotType: h.slotType as "driver_1" | "driver_2" | "team" | "engineer",
+              assetId: h.assetId,
+              lockedPrice: h.lockedPrice,
+              acquiredRound: h.acquiredRound,
+              isLocked: false,
+            }))
+          )
+        }
+      }
     }
 
     return { profile, entry, context }
@@ -291,7 +348,7 @@ export async function getFantasyLineupState(entryId: number, season: number, rou
         teamName: driverRow.team.name,
         teamColor: driverRow.team.color,
         linkedTeamId: driverRow.team.id,
-        price: prices.get(row.asset.id) ?? 0,
+        price: prices.get(row.asset.id)?.price ?? 0,
         entityId: driverRow.driver.id,
         linkedDriverId: driverRow.driver.id,
       }
@@ -312,7 +369,7 @@ export async function getFantasyLineupState(entryId: number, season: number, rou
         name: teamRow.name,
         teamColor: teamRow.color,
         linkedTeamId: teamRow.id,
-        price: prices.get(row.asset.id) ?? 0,
+        price: prices.get(row.asset.id)?.price ?? 0,
         entityId: teamRow.id,
       }
       continue
@@ -334,7 +391,7 @@ export async function getFantasyLineupState(entryId: number, season: number, rou
         teamName: engineerRow.team.name,
         teamColor: engineerRow.team.color,
         linkedTeamId: engineerRow.team.id,
-        price: prices.get(row.asset.id) ?? 0,
+        price: prices.get(row.asset.id)?.price ?? 0,
         entityId: engineerRow.engineer.id,
       }
     }
@@ -430,6 +487,115 @@ export async function getFantasyReviewState(
     },
     lockStatus: context.lockStatus,
     lockAt: context.lockAt,
+    transfers: {
+      freeDriverTransfersLeft: entry.freeDriverTransfersLeft,
+      freeEngineerTransfersLeft: entry.freeEngineerTransfersLeft,
+      teamLockedUntilRound: entry.teamLockedUntilRound,
+    },
+  }
+}
+
+async function getPreviousLockedRoster(
+  tx: any,
+  profileId: number,
+  seasonId: number,
+  currentRound: number,
+) {
+  const [prevEntryRow] = await tx
+    .select({ entry: fantasyRoundEntries })
+    .from(fantasyRoundEntries)
+    .innerJoin(raceWeekends, eq(fantasyRoundEntries.weekendId, raceWeekends.id))
+    .where(
+      and(
+        eq(fantasyRoundEntries.profileId, profileId),
+        eq(fantasyRoundEntries.seasonId, seasonId),
+        lt(raceWeekends.round, currentRound),
+        eq(fantasyRoundEntries.status, "locked"),
+      )
+    )
+    .orderBy(desc(raceWeekends.round))
+    .limit(1)
+
+  const prevEntry = prevEntryRow?.entry ?? null
+  if (!prevEntry) {
+    return { drivers: [], teamId: null, engineerId: null, teamLockedUntilRound: null }
+  }
+
+  const holdings = await tx
+    .select()
+    .from(fantasyRoundHoldings)
+    .where(eq(fantasyRoundHoldings.entryId, prevEntry.id))
+
+  const driverIds: number[] = []
+  let teamId: number | null = null
+  let engineerId: number | null = null
+
+  for (const h of holdings) {
+    if (h.slotType === "driver_1" || h.slotType === "driver_2") {
+      driverIds.push(h.assetId)
+    } else if (h.slotType === "team") {
+      teamId = h.assetId
+    } else if (h.slotType === "engineer") {
+      engineerId = h.assetId
+    }
+  }
+
+  return { drivers: driverIds, teamId, engineerId, teamLockedUntilRound: prevEntry.teamLockedUntilRound }
+}
+
+async function validateRosterConstraints(
+  tx: any,
+  entry: typeof fantasyRoundEntries.$inferSelect,
+  context: any,
+  proposedHoldings: Array<{ slotType: SlotType; assetId: number }>,
+) {
+  const prevRoster = await getPreviousLockedRoster(tx, entry.profileId, entry.seasonId, context.round)
+
+  const proposedDrivers = proposedHoldings
+    .filter((h) => h.slotType === "driver_1" || h.slotType === "driver_2")
+    .map((h) => h.assetId)
+  const proposedTeamId = proposedHoldings.find((h) => h.slotType === "team")?.assetId ?? null
+  const proposedEngineerId = proposedHoldings.find((h) => h.slotType === "engineer")?.assetId ?? null
+
+  // Team Lock Check
+  if (prevRoster.teamId && prevRoster.teamLockedUntilRound && prevRoster.teamLockedUntilRound > context.round) {
+    if (proposedTeamId !== prevRoster.teamId) {
+      throw new Error("team_locked")
+    }
+  }
+
+  // Driver transfers
+  let driverTransfersUsed = 0
+  for (const assetId of proposedDrivers) {
+    if (!prevRoster.drivers.includes(assetId)) {
+      driverTransfersUsed++
+    }
+  }
+  if (driverTransfersUsed > context.ruleset.freeDriverTransfers) {
+    throw new Error("no_driver_transfers_left")
+  }
+
+  // Engineer transfers
+  let engineerTransfersUsed = 0
+  if (proposedEngineerId !== null && prevRoster.engineerId !== null && proposedEngineerId !== prevRoster.engineerId) {
+    engineerTransfersUsed = 1
+  }
+  if (engineerTransfersUsed > context.ruleset.freeEngineerTransfers) {
+    throw new Error("no_engineer_transfers_left")
+  }
+
+  // Team Lock calculation
+  let teamLockedUntilRound = entry.teamLockedUntilRound
+  if (proposedTeamId !== null && prevRoster.teamId !== null && proposedTeamId !== prevRoster.teamId) {
+    teamLockedUntilRound = context.round + 3
+  } else if (proposedTeamId === null) {
+    teamLockedUntilRound = null
+  }
+
+  return {
+    freeDriverTransfersLeft: context.ruleset.freeDriverTransfers - driverTransfersUsed,
+    freeEngineerTransfersLeft: context.ruleset.freeEngineerTransfers - engineerTransfersUsed,
+    teamLockedUntilRound,
   }
 }
 
@@ -449,7 +615,6 @@ export async function upsertFantasyHolding(
 
   const { entry, context } = ensured
   assertFantasyEntryMutable(entry, context.lockOpen)
-  const invalidations: string[] = []
 
   const [asset] = await db
     .select()
@@ -475,64 +640,85 @@ export async function upsertFantasyHolding(
     throw new Error("driver_already_selected")
   }
 
-  const [existingHolding] = await db
-    .select()
-    .from(fantasyRoundHoldings)
-    .where(and(eq(fantasyRoundHoldings.entryId, entry.id), eq(fantasyRoundHoldings.slotType, slotType)))
-    .limit(1)
+  return db.transaction(async (tx) => {
+    const existingHoldings = await tx
+      .select()
+      .from(fantasyRoundHoldings)
+      .where(eq(fantasyRoundHoldings.entryId, entry.id))
 
-  const prices = await getCurrentAssetPricesMap(season, round, [assetId])
-  const lockedPrice = prices.get(assetId) ?? 0
+    const otherHoldings = existingHoldings.filter((h) => h.slotType !== slotType)
+    const proposedHoldings = [
+      ...otherHoldings.map((h) => ({ slotType: h.slotType as SlotType, assetId: h.assetId })),
+      { slotType, assetId },
+    ]
 
-  if (existingHolding) {
-    await db
-      .update(fantasyRoundHoldings)
-      .set({
+    const updatedLimits = await validateRosterConstraints(tx, entry, context, proposedHoldings)
+
+    const prices = await getCurrentAssetPricesMap(season, round, [assetId])
+    const lockedPrice = prices.get(assetId)?.price ?? 0
+
+    const existing = existingHoldings.find((h) => h.slotType === slotType)
+    if (existing) {
+      await tx
+        .update(fantasyRoundHoldings)
+        .set({
+          assetId,
+          lockedPrice,
+          acquiredRound: round,
+        })
+        .where(eq(fantasyRoundHoldings.id, existing.id))
+    } else {
+      await tx.insert(fantasyRoundHoldings).values({
+        entryId: entry.id,
+        slotType,
         assetId,
         lockedPrice,
         acquiredRound: round,
+        isLocked: false,
       })
-      .where(eq(fantasyRoundHoldings.id, existingHolding.id))
-  } else {
-    await db.insert(fantasyRoundHoldings).values({
-      entryId: entry.id,
-      slotType,
-      assetId,
-      lockedPrice,
-      acquiredRound: round,
-      isLocked: false,
-    })
-  }
+    }
 
-  const lineup = await getFantasyLineupState(entry.id, season, round)
-  const budget = getBudgetFromLineup(lineup, entry.budgetTotal)
+    // Update transfers & team hold fields
+    await tx
+      .update(fantasyRoundEntries)
+      .set({
+        freeDriverTransfersLeft: updatedLimits.freeDriverTransfersLeft,
+        freeEngineerTransfersLeft: updatedLimits.freeEngineerTransfersLeft,
+        teamLockedUntilRound: updatedLimits.teamLockedUntilRound,
+        updatedAt: new Date(),
+      })
+      .where(eq(fantasyRoundEntries.id, entry.id))
 
-  if (!budget.withinCap) {
-    invalidations.push("budget_exceeded")
-  }
+    const lineup = await getFantasyLineupState(entry.id, season, round)
+    const budget = getBudgetFromLineup(lineup, entry.budgetTotal)
 
-  const [predictions] = await db
-    .select()
-    .from(fantasyPredictions)
-    .where(eq(fantasyPredictions.entryId, entry.id))
-    .limit(1)
+    await tx
+      .update(fantasyRoundEntries)
+      .set({
+        budgetSpent: budget.spent,
+      })
+      .where(eq(fantasyRoundEntries.id, entry.id))
 
-  const eligibility = getFantasyEligibilityState(lineup, budget, isPredictionsComplete(predictions ?? null), context.lockOpen)
+    const invalidations: string[] = []
+    if (!budget.withinCap) {
+      invalidations.push("budget_exceeded")
+    }
 
-  await db
-    .update(fantasyRoundEntries)
-    .set({
-      budgetSpent: budget.spent,
-      updatedAt: new Date(),
-    })
-    .where(eq(fantasyRoundEntries.id, entry.id))
+    const [predictions] = await tx
+      .select()
+      .from(fantasyPredictions)
+      .where(eq(fantasyPredictions.entryId, entry.id))
+      .limit(1)
 
-  return {
-    lineup,
-    budget,
-    eligibility,
-    invalidations,
-  }
+    const eligibility = getFantasyEligibilityState(lineup, budget, isPredictionsComplete(predictions ?? null), context.lockOpen)
+
+    return {
+      lineup,
+      budget,
+      eligibility,
+      invalidations,
+    }
+  })
 }
 
 export async function removeFantasyHolding(
@@ -555,32 +741,58 @@ export async function removeFantasyHolding(
   const db = getDb()
   if (!db) return null
 
-  await db
-    .delete(fantasyRoundHoldings)
-    .where(
-      and(
-        eq(fantasyRoundHoldings.entryId, entry.id),
-        eq(fantasyRoundHoldings.slotType, slotType),
+  return db.transaction(async (tx) => {
+    const existingHoldings = await tx
+      .select()
+      .from(fantasyRoundHoldings)
+      .where(eq(fantasyRoundHoldings.entryId, entry.id))
+
+    const proposedHoldings = existingHoldings
+      .filter((h) => h.slotType !== slotType)
+      .map((h) => ({ slotType: h.slotType as SlotType, assetId: h.assetId }))
+
+    const updatedLimits = await validateRosterConstraints(tx, entry, context, proposedHoldings)
+
+    await tx
+      .delete(fantasyRoundHoldings)
+      .where(
+        and(
+          eq(fantasyRoundHoldings.entryId, entry.id),
+          eq(fantasyRoundHoldings.slotType, slotType),
+        )
       )
-    )
 
-  const lineup = await getFantasyLineupState(entry.id, season, round)
-  const budget = getBudgetFromLineup(lineup, entry.budgetTotal)
+    // Update transfers & team hold fields
+    await tx
+      .update(fantasyRoundEntries)
+      .set({
+        freeDriverTransfersLeft: updatedLimits.freeDriverTransfersLeft,
+        freeEngineerTransfersLeft: updatedLimits.freeEngineerTransfersLeft,
+        teamLockedUntilRound: updatedLimits.teamLockedUntilRound,
+        updatedAt: new Date(),
+      })
+      .where(eq(fantasyRoundEntries.id, entry.id))
 
-  const [predictions] = await db
-    .select()
-    .from(fantasyPredictions)
-    .where(eq(fantasyPredictions.entryId, entry.id))
-    .limit(1)
+    const lineup = await getFantasyLineupState(entry.id, season, round)
+    const budget = getBudgetFromLineup(lineup, entry.budgetTotal)
 
-  const eligibility = getFantasyEligibilityState(lineup, budget, isPredictionsComplete(predictions ?? null), context.lockOpen)
+    await tx
+      .update(fantasyRoundEntries)
+      .set({
+        budgetSpent: budget.spent,
+      })
+      .where(eq(fantasyRoundEntries.id, entry.id))
 
-  await db
-    .update(fantasyRoundEntries)
-    .set({ budgetSpent: budget.spent, updatedAt: new Date() })
-    .where(eq(fantasyRoundEntries.id, entry.id))
+    const [predictions] = await tx
+      .select()
+      .from(fantasyPredictions)
+      .where(eq(fantasyPredictions.entryId, entry.id))
+      .limit(1)
 
-  return { lineup, budget, eligibility }
+    const eligibility = getFantasyEligibilityState(lineup, budget, isPredictionsComplete(predictions ?? null), context.lockOpen)
+
+    return { lineup, budget, eligibility }
+  })
 }
 
 function toPredictionsInput(predictions: typeof fantasyPredictions.$inferSelect): FantasyPredictionsInput {
@@ -836,12 +1048,35 @@ export async function getFantasyRoundResult(
     .where(eq(fantasyRoundScores.entryId, entry.id))
     .limit(1)
 
+  // Calculate average round score across all entries for this season and round
+  let avgRoundScore = 0
+  try {
+    const [avgRow] = await db
+      .select({
+        avgScore: sql<number>`avg(${fantasyRoundScores.totalScore})`,
+      })
+      .from(fantasyRoundScores)
+      .innerJoin(fantasyRoundEntries, eq(fantasyRoundScores.entryId, fantasyRoundEntries.id))
+      .where(
+        and(
+          eq(fantasyRoundEntries.seasonId, context.fantasySeasonId),
+          eq(fantasyRoundEntries.weekendId, context.weekendId)
+        )
+      )
+    if (avgRow?.avgScore) {
+      avgRoundScore = Math.round(Number(avgRow.avgScore))
+    }
+  } catch (err) {
+    console.error("Failed to fetch average round score:", err)
+  }
+
   if (!score) {
     return {
       summary: {
         totalScore: 0,
         isOfficial: false,
         lockedAt: entry.lockedAt?.toISOString() ?? null,
+        avgRoundScore,
       },
       lineup,
       blocks: {
@@ -893,6 +1128,7 @@ export async function getFantasyRoundResult(
       totalScore: score.totalScore,
       isOfficial: score.isOfficial,
       lockedAt: entry.lockedAt?.toISOString() ?? null,
+      avgRoundScore,
     },
     lineup,
     blocks,

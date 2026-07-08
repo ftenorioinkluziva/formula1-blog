@@ -38,8 +38,8 @@ export interface PitWallLeadsResponse {
 }
 
 export interface PredictionOptionsResponse {
-  drivers: Array<{ id: number }>
-  teams: Array<{ id: number }>
+  drivers: Array<{ id: number; name: string }>
+  teams: Array<{ id: number; name: string }>
 }
 
 export interface ReviewResponse {
@@ -127,15 +127,25 @@ export async function seedSessionKey(page: Page, sessionKey: string): Promise<vo
 }
 
 export async function fillPredictions(page: Page, predictionOptions: PredictionOptionsResponse): Promise<void> {
-  const selectedDriverId = predictionOptions.drivers[0]?.id ?? 0
-  const selectedTeamId = predictionOptions.teams[0]?.id ?? 0
+  const driver = predictionOptions.drivers[0]
+  const team = predictionOptions.teams[0]
 
-  await page.getByTestId("fantasy-prediction-pole").selectOption(String(selectedDriverId))
-  await page.getByTestId("fantasy-prediction-race-winner").selectOption(String(selectedDriverId))
-  await page.getByTestId("fantasy-prediction-podium-p2").selectOption(String(selectedDriverId))
-  await page.getByTestId("fantasy-prediction-podium-p3").selectOption(String(selectedDriverId))
-  await page.getByTestId("fantasy-prediction-fastest-lap").selectOption(String(selectedDriverId))
-  await page.getByTestId("fantasy-prediction-fastest-pit-team").selectOption(String(selectedTeamId))
-  await page.getByTestId("fantasy-prediction-safety-car-band").selectOption("1-2")
-  await page.getByTestId("fantasy-prediction-red-flag").selectOption("no")
+  if (!driver || !team) return
+
+  const fields = [
+    { id: "fantasy-prediction-pole", name: driver.name },
+    { id: "fantasy-prediction-race-winner", name: driver.name },
+    { id: "fantasy-prediction-podium-p2", name: driver.name },
+    { id: "fantasy-prediction-podium-p3", name: driver.name },
+    { id: "fantasy-prediction-fastest-lap", name: driver.name },
+    { id: "fantasy-prediction-fastest-pit-team", name: team.name },
+    { id: "fantasy-prediction-safety-car-band", name: "1-2" },
+    { id: "fantasy-prediction-red-flag", name: "No" },
+  ]
+
+  for (const field of fields) {
+    const trigger = page.getByTestId(field.id)
+    await trigger.click()
+    await page.locator('[role="option"]').filter({ hasText: field.name }).first().click()
+  }
 }

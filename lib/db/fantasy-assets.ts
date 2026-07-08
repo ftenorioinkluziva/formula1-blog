@@ -22,6 +22,7 @@ export interface FantasyAssetListItem {
   linkedDriverId?: number
   linkedDriverSlot?: "driver_1" | "driver_2"
   price: number
+  priceDelta?: number
   currentPosition?: number
   currentPoints?: number
   trendLabel?: string
@@ -136,7 +137,8 @@ export async function getFantasyDriverAssets(
         teamName: row.team.name,
         teamColor: row.team.color,
         linkedTeamId: row.team.id,
-        price: prices.get(row.asset.id) ?? 0,
+        price: prices.get(row.asset.id)?.price ?? 0,
+        priceDelta: prices.get(row.asset.id)?.delta ?? 0,
         currentPosition: row.driver.position,
         currentPoints: row.driver.points,
         trendLabel: buildDriverTrend(row.driver.position),
@@ -188,7 +190,8 @@ export async function getFantasyTeamAssets(
       imageUrl: buildTeamImageUrl(row.team.name),
       teamColor: row.team.color,
       linkedTeamId: row.team.id,
-      price: prices.get(row.asset.id) ?? 0,
+      price: prices.get(row.asset.id)?.price ?? 0,
+      priceDelta: prices.get(row.asset.id)?.delta ?? 0,
       currentPosition: row.team.position,
       currentPoints: row.team.points,
       profileTag: buildTeamProfileTag(row.team.position),
@@ -255,7 +258,8 @@ export async function getFantasyPitWallLeadAssets(
     teamName: row.team.name,
     teamColor: row.team.color,
     linkedTeamId: row.team.id,
-    price: prices.get(row.asset.id) ?? 0,
+    price: prices.get(row.asset.id)?.price ?? 0,
+    priceDelta: prices.get(row.asset.id)?.delta ?? 0,
     qualifyingFormLabel: buildEngineerExecutionLabel(row.team.position),
     raceExecutionLabel: buildEngineerExecutionLabel(row.team.position),
     pitExecutionLabel: row.team.position <= 5 ? "sharp" : "developing",

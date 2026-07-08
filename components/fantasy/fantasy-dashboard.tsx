@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import {
   createFantasyDraft,
   getFantasyAssets,
@@ -15,8 +15,10 @@ import {
   saveFantasyPredictions,
   triggerFantasyScore,
   updateFantasyLineup,
+  updateFantasyProfile,
 } from "@/lib/fantasy/client"
 import { FantasyDraftSection } from "@/components/fantasy/fantasy-draft-section"
+import { FantasyGameplayStepper } from "@/components/fantasy/fantasy-gameplay-stepper"
 import { FantasyLeaderboardCard } from "@/components/fantasy/fantasy-leaderboard-card"
 import { FantasyPredictionsCard } from "@/components/fantasy/fantasy-predictions-card"
 import { FantasyResultCard } from "@/components/fantasy/fantasy-result-card"
@@ -67,15 +69,16 @@ export function FantasyDashboard({ locale, weekends, initialRound }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [scoreMessage, setScoreMessage] = useState<string | null>(null)
 
+  const displayNameRef = useRef(displayName)
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      const saved = window.localStorage.getItem(SESSION_KEY_STORAGE) ?? buildFallbackSessionKey()
-      window.localStorage.setItem(SESSION_KEY_STORAGE, saved)
-      setSessionKey(saved)
-    }, 0)
+    displayNameRef.current = displayName
+  }, [displayName])
 
-    return () => window.clearTimeout(timer)
-  }, [])
+  useEffect(() => {
+    if (bootstrap?.profile?.displayName) {
+      setDisplayName(bootstrap.profile.displayName)
+    }
+  }, [bootstrap?.profile?.displayName])
 
   useEffect(() => {
     if (!sessionKey) {
@@ -94,13 +97,23 @@ export function FantasyDashboard({ locale, weekends, initialRound }: Props) {
           if (cancelled) return
           setBootstrap(bootstrapResponse)
 
+          let currentBootstrap = bootstrapResponse
           const lockIsOpen = bootstrapResponse.lockStatus === "open" || bootstrapResponse.lockStatus === "closing_soon"
 
           if (!bootstrapResponse.hasExistingDraft && lockIsOpen) {
-            await createFantasyDraft(locale, SEASON, round, sessionKey, displayName)
+            const draftResult = await createFantasyDraft(locale, SEASON, round, sessionKey, displayNameRef.current)
+            if (draftResult?.profile) {
+              currentBootstrap = {
+                ...bootstrapResponse,
+                profile: draftResult.profile,
+                hasExistingDraft: true,
+                draftStatus: draftResult.draftStatus ?? draftResult.entry.status,
+              }
+              setBootstrap(currentBootstrap)
+            }
           }
 
-          const hasEntry = bootstrapResponse.hasExistingDraft || lockIsOpen
+          const hasEntry = currentBootstrap.hasExistingDraft || lockIsOpen
 
           const [reviewResponse, driversResponse, teamsResponse, engineersResponse, predictionsResponse, resultResponse, leaderboardResponse] = await Promise.all([
             hasEntry ? getFantasyReview(locale, SEASON, round, sessionKey).catch(() => null) : Promise.resolve(null),
@@ -140,7 +153,7 @@ export function FantasyDashboard({ locale, weekends, initialRound }: Props) {
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [displayName, locale, round, sessionKey])
+  }, [locale, round, sessionKey])
 
   async function refreshRound(): Promise<void> {
     if (!sessionKey) return
@@ -228,26 +241,30 @@ export function FantasyDashboard({ locale, weekends, initialRound }: Props) {
     }
   }
 
-  async function handleRecalculateScore(): Promise<void> {
-    if (!sessionKey) return
-
-    setBusy("score")
-    setError(null)
-    setScoreMessage(null)
-
+  async function handleSaveDisplayName(newName: string): Promise<void> {
+    if (!sessionKey || !newName.trim()) return
     try {
-      const scoreResponse = await triggerFantasyScore(locale, SEASON, round, sessionKey)
-      setScoreMessage(`Entries recalculadas: ${scoreResponse.entriesScored}`)
-      await refreshRound()
-    } catch (scoreError) {
-      setError(scoreError instanceof Error ? scoreError.message : "failed_to_score_round")
-    } finally {
-      setBusy(null)
+      await updateFantasyProfile(locale, sessionKey, newName.trim())
+    } catch (saveError) {
+      console.error("Failed to persist display name:", saveError)
     }
   }
 
+  // Restore session key loader in a separate mount effect
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const saved = window.localStorage.getItem(SESSION_KEY_STORAGE) ?? buildFallbackSessionKey()
+      window.localStorage.setItem(SESSION_KEY_STORAGE, saved)
+      setSessionKey(saved)
+    }, 0)
+
+    return () => window.clearTimeout(timer)
+  }, [])
+
   return (
     <div className="space-y-6" data-testid="fantasy-dashboard" data-round={round} data-session-key={sessionKey || undefined}>
+      <FantasyGameplayStepper bootstrap={bootstrap} review={review} />
+
       <FantasyDraftSection
         round={round}
         weekends={weekends}
@@ -263,9 +280,9 @@ export function FantasyDashboard({ locale, weekends, initialRound }: Props) {
         scoreMessage={scoreMessage}
         onRoundChange={setRound}
         onDisplayNameChange={setDisplayName}
+        onDisplayNameSave={handleSaveDisplayName}
         onSelect={handleSelect}
         onLock={() => void handleLock()}
-        onRecalculateScore={() => void handleRecalculateScore()}
       />
 
       <section className="grid gap-6 lg:grid-cols-[1fr_0.95fr]">

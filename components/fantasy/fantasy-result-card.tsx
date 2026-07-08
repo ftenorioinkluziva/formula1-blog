@@ -16,6 +16,22 @@ interface Props {
 export function FantasyResultCard({ result, lockStatus }: Props) {
   const t = useTranslations("fantasy.result")
 
+  const allItems = [
+    ...(result?.blocks.drivers.items ?? []),
+    ...(result?.blocks.team.items ?? []),
+    ...(result?.blocks.engineer.items ?? []),
+    ...(result?.blocks.predictions.items ?? []),
+  ]
+
+  let bestDecision: (typeof allItems)[0] | null = null
+  let worstDecision: (typeof allItems)[0] | null = null
+
+  if (allItems.length > 0) {
+    const sorted = [...allItems].sort((a, b) => b.points - a.points)
+    bestDecision = sorted[0]
+    worstDecision = sorted[sorted.length - 1]
+  }
+
   return (
     <Card className="border-zinc-800 bg-[#111111] text-zinc-50" data-testid="fantasy-result-card">
       <CardHeader>
@@ -23,10 +39,44 @@ export function FantasyResultCard({ result, lockStatus }: Props) {
         <CardDescription className="text-zinc-400">{t("description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <FantasyMetricCard label={t("total")} value={String(result?.summary.totalScore ?? 0)} icon={<Trophy className="h-4 w-4" />} />
-          <FantasyMetricCard label={t("official")} value={result?.summary.isOfficial ? "yes" : "no"} icon={<Lock className="h-4 w-4" />} />
-        </div>
+        {result ? (
+          <div className="grid grid-cols-3 gap-3">
+            <FantasyMetricCard label={t("total")} value={String(result.summary.totalScore)} icon={<Trophy className="h-4 w-4 text-amber-400" />} />
+            <FantasyMetricCard label={t("avgScore")} value={String(result.summary.avgRoundScore ?? 0)} icon={<BarChart3 className="h-4 w-4 text-blue-400" />} />
+            <FantasyMetricCard
+              label={t("difference")}
+              value={`${result.summary.totalScore >= (result.summary.avgRoundScore ?? 0) ? "+" : ""}${
+                result.summary.totalScore - (result.summary.avgRoundScore ?? 0)
+              }`}
+              icon={<Trophy className={`h-4 w-4 ${result.summary.totalScore >= (result.summary.avgRoundScore ?? 0) ? "text-emerald-400" : "text-red-400"}`} />}
+            />
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            <FantasyMetricCard label={t("total")} value="0" icon={<Trophy className="h-4 w-4" />} />
+            <FantasyMetricCard label={t("official")} value="no" icon={<Lock className="h-4 w-4" />} />
+          </div>
+        )}
+
+        {result && allItems.length > 0 && (
+          <div className="grid gap-3 sm:grid-cols-2 text-xs">
+            {bestDecision && bestDecision.points > 0 && (
+              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
+                <div className="font-semibold text-emerald-400">{t("bestDecision")}</div>
+                <div className="mt-1 text-zinc-300 font-medium truncate">{bestDecision.label}</div>
+                <div className="mt-0.5 text-emerald-400 font-bold">+{bestDecision.points} pts</div>
+              </div>
+            )}
+            {worstDecision && worstDecision.points < 0 && (
+              <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+                <div className="font-semibold text-red-400">{t("worstDecision")}</div>
+                <div className="mt-1 text-zinc-300 font-medium truncate">{worstDecision.label}</div>
+                <div className="mt-0.5 text-red-400 font-bold">{worstDecision.points} pts</div>
+              </div>
+            )}
+          </div>
+        )}
+
         <Separator className="bg-zinc-800" />
         <ResultBlock title={t("drivers")} blockKey="drivers" subtotal={result?.blocks.drivers.subtotal ?? 0} items={result?.blocks.drivers.items ?? []} emptyText={t("emptyBlock")} />
         <ResultBlock title={t("team")} blockKey="team" subtotal={result?.blocks.team.subtotal ?? 0} items={result?.blocks.team.items ?? []} emptyText={t("emptyBlock")} />

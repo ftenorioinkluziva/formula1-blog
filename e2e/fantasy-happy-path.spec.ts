@@ -36,7 +36,6 @@ test("completa o fluxo feliz da fantasy para uma rodada aberta", async ({ page, 
 
   const savePredictionsButton = page.getByTestId("fantasy-save-predictions-button")
   const lockButton = page.getByTestId("fantasy-lock-button")
-  const scoreButton = page.getByTestId("fantasy-score-button")
 
   const [driversPayload, teamsPayload, predictionsPayload] = await Promise.all([
     fetchJson<AssetListResponse>(request, `/${LOCALE}/api/fantasy/assets?season=${SEASON}&round=${round}&type=driver&sessionKey=${sessionKey}`),
@@ -70,11 +69,10 @@ test("completa o fluxo feliz da fantasy para uma rodada aberta", async ({ page, 
 
   await expect(lockButton).toBeDisabled()
   await expect(savePredictionsButton).toBeDisabled()
-  await expect(scoreButton).toBeDisabled()
   await expect(page.getByTestId("fantasy-result-card")).toBeVisible()
 
-  await page.getByTestId("fantasy-leaderboard-mode-official").click()
-  await expect(page.getByTestId("fantasy-leaderboard-mode-official")).toHaveAttribute("data-state", "on")
+  await page.getByTestId("fantasy-leaderboard-mode-round").click()
+  await expect(page.getByTestId("fantasy-leaderboard-mode-round")).toHaveAttribute("data-state", "on")
 
   await page.getByTestId("fantasy-leaderboard-view-around").click()
   await expect(page.getByTestId("fantasy-leaderboard-view-around")).toHaveAttribute("data-state", "on")

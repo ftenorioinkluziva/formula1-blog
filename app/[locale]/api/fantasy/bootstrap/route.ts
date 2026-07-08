@@ -33,6 +33,11 @@ export async function GET(request: Request): Promise<Response> {
         country: context.country,
         location: context.location,
       },
+      profile: profile ? {
+        id: profile.id,
+        displayName: profile.displayName,
+        sessionKey: profile.sessionKey,
+      } : null,
       lockStatus: context.lockStatus,
       lockAt: context.lockAt,
       budgetCap: context.budgetCap,

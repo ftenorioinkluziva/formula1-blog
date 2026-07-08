@@ -5,6 +5,16 @@ export const dynamic = "force-dynamic"
 export const maxDuration = 120
 
 export async function POST(request: NextRequest): Promise<Response> {
+  const adminSecret = process.env.ADMIN_SECRET
+  if (!adminSecret) {
+    return NextResponse.json({ error: "Unauthorized: ADMIN_SECRET not configured on server" }, { status: 401 })
+  }
+
+  const headerSecret = request.headers.get("x-admin-secret")
+  if (headerSecret !== adminSecret) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
   try {
     const body = (await request.json().catch(() => ({}))) as {
       season?: number

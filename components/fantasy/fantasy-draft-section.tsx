@@ -38,9 +38,9 @@ interface Props {
   scoreMessage: string | null
   onRoundChange: (round: number) => void
   onDisplayNameChange: (value: string) => void
+  onDisplayNameSave: (value: string) => void
   onSelect: (slot: FantasySlotType, assetId: number) => Promise<void>
   onLock: () => void
-  onRecalculateScore: () => void
 }
 
 export function FantasyDraftSection({
@@ -58,9 +58,9 @@ export function FantasyDraftSection({
   scoreMessage,
   onRoundChange,
   onDisplayNameChange,
+  onDisplayNameSave,
   onSelect,
   onLock,
-  onRecalculateScore,
 }: Props) {
   const t = useTranslations("fantasy.draft")
   const budgetPct = review ? Math.max(0, Math.min(100, (review.budget.spent / review.budget.total) * 100)) : 0
@@ -105,11 +105,77 @@ export function FantasyDraftSection({
                 <Input
                   value={displayName}
                   onChange={(event) => onDisplayNameChange(event.target.value)}
+                  onBlur={() => onDisplayNameSave(displayName)}
                   className="border-zinc-800 bg-zinc-900 text-zinc-100"
                   data-testid="fantasy-display-name-input"
                 />
               </label>
             </div>
+
+            {/* Account Recovery Key section */}
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 text-xs text-zinc-400">
+              <div className="space-y-1">
+                <span className="font-semibold text-zinc-300">{t("recoveryKey")}</span>
+                <code className="block font-mono text-[10px] text-zinc-500 select-all">{bootstrap?.profile?.sessionKey || "..."}</code>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  type="button"
+                  onClick={() => {
+                    if (bootstrap?.profile?.sessionKey) {
+                      navigator.clipboard.writeText(bootstrap.profile.sessionKey)
+                      alert(t("copysuccess"))
+                    }
+                  }}
+                  className="h-8 border-zinc-850 bg-zinc-900/60 hover:bg-zinc-800 text-zinc-300"
+                >
+                  {t("copyKey")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  type="button"
+                  onClick={() => {
+                    const key = prompt(t("recoveryKey"))?.trim()
+                    if (key) {
+                      window.localStorage.setItem("fantasy-session-key", key)
+                      window.location.reload()
+                    }
+                  }}
+                  className="h-8 border-zinc-850 bg-zinc-900/60 hover:bg-zinc-800 text-zinc-300"
+                >
+                  {t("importKey")}
+                </Button>
+              </div>
+            </div>
+
+            {/* Transfer Limits and Constructor Hold */}
+            {review && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 text-xs" data-testid="fantasy-transfers-info">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-zinc-500 font-semibold uppercase tracking-wider text-[10px]">{t("driverTransfers")}</span>
+                  <span className="text-zinc-200 font-bold" data-testid="fantasy-free-driver-transfers">{review.transfers?.freeDriverTransfersLeft ?? 0}</span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-zinc-500 font-semibold uppercase tracking-wider text-[10px]">{t("engineerTransfers")}</span>
+                  <span className="text-zinc-200 font-bold" data-testid="fantasy-free-engineer-transfers">{review.transfers?.freeEngineerTransfersLeft ?? 0}</span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-zinc-500 font-semibold uppercase tracking-wider text-[10px]">{t("teamStatus")}</span>
+                  {review.transfers?.teamLockedUntilRound && review.transfers.teamLockedUntilRound > round ? (
+                    <span className="text-red-400 font-bold flex items-center gap-1" data-testid="fantasy-team-locked-until">
+                      {t("teamLocked", { round: review.transfers.teamLockedUntilRound })}
+                    </span>
+                  ) : (
+                    <span className="text-emerald-400 font-bold" data-testid="fantasy-team-free">
+                      {t("teamFree")}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
 
             <FantasyLineupSlots
               review={review}
@@ -161,25 +227,21 @@ export function FantasyDraftSection({
                 )}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
+            <div className="flex flex-wrap gap-3">
               <Button className="w-full sm:w-auto" onClick={onLock} disabled={busy !== null || !review?.eligibility.isValid} data-testid="fantasy-lock-button">
                 {busy === "lock" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 {t("lockLineup")}
-              </Button>
-              <Button className="w-full sm:w-auto" variant="outline" onClick={onRecalculateScore} disabled={busy !== null || !lockClosed} data-testid="fantasy-score-button">
-                {busy === "score" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                {t("recalculateScore")}
               </Button>
             </div>
           </CardContent>
         </Card>
       </section>
 
-      {/* Compact horizontal picker shelves */}
       <section className="space-y-4">
         <PickerSection
           title="Drivers"
           description={t("driversDescription")}
+          testId="fantasy-drivers-card"
           badge={
             (selectedDriver1Id ?? selectedDriver2Id) ? (
               <Badge variant="outline" className="border-red-500/40 bg-red-500/10 text-red-200">
@@ -201,6 +263,7 @@ export function FantasyDraftSection({
         <PickerSection
           title="Teams"
           description={t("teamsDescription")}
+          testId="fantasy-teams-card"
           badge={
             selectedTeamId ? (
               <Badge variant="outline" className="border-red-500/40 bg-red-500/10 text-red-200">1 / 1</Badge>
@@ -219,6 +282,7 @@ export function FantasyDraftSection({
         <PickerSection
           title="Pit Wall Lead"
           description={t("pitWallDescription")}
+          testId="fantasy-engineers-card"
           badge={
             selectedEngineerId ? (
               <Badge variant="outline" className="border-red-500/40 bg-red-500/10 text-red-200">1 / 1</Badge>
@@ -242,15 +306,17 @@ function PickerSection({
   title,
   description,
   badge,
+  testId,
   children,
 }: {
   title: string
   description: string
   badge?: React.ReactNode
+  testId?: string
   children: React.ReactNode
 }) {
   return (
-    <Card className="border-zinc-800 bg-zinc-950 text-zinc-50">
+    <Card className="border-zinc-800 bg-zinc-950 text-zinc-50" data-testid={testId}>
       <CardHeader className="px-4 pb-3 pt-4 sm:px-6 sm:pt-6">
         <div className="flex items-center justify-between gap-3">
           <div>

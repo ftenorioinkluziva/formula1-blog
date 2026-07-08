@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { and, eq, lt, gte, sql, isNull, not, exists } from "drizzle-orm"
 import { getDb } from "@/lib/db/client"
 import { fantasySeasons, raceWeekends, raceSessions, fantasyRoundScores, fantasyRoundEntries } from "@/lib/db/schema"
@@ -15,7 +15,17 @@ interface RoundResult {
   detail?: string
 }
 
-export async function GET(): Promise<Response> {
+export async function GET(request: NextRequest): Promise<Response> {
+  const adminSecret = process.env.ADMIN_SECRET
+  if (!adminSecret) {
+    return NextResponse.json({ error: "Unauthorized: ADMIN_SECRET not configured on server" }, { status: 401 })
+  }
+
+  const headerSecret = request.headers.get("x-admin-secret")
+  if (headerSecret !== adminSecret) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
   const db = getDb()
 
   if (!db) {

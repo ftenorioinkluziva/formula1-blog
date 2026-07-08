@@ -211,19 +211,19 @@ async function main() {
   const driversWithPrices = uniqueByAsset(
     driverRows.map((row) => ({
       ...row,
-      price: priceMap.get(row.assetId) ?? 0,
+      price: priceMap.get(row.assetId)?.price ?? 0,
     })),
   )
   const teamsWithPrices = uniqueByAsset(
     teamRows.map((row) => ({
       ...row,
-      price: priceMap.get(row.assetId) ?? 0,
+      price: priceMap.get(row.assetId)?.price ?? 0,
     })),
   )
   const pitWallsWithPrices = uniqueByAsset(
     pitWallRows.map((row) => ({
       ...row,
-      price: priceMap.get(row.assetId) ?? 0,
+      price: priceMap.get(row.assetId)?.price ?? 0,
     })),
   )
 

@@ -158,3 +158,17 @@ export async function getFantasyLeaderboard(locale: string, season: number, roun
   const response = await fetch(`/${locale}/api/fantasy/leaderboard?${query}`, { cache: "no-store" })
   return readJson<FantasyLeaderboardResponse>(response)
 }
+
+export async function updateFantasyProfile(
+  locale: string,
+  sessionKey: string,
+  displayName: string,
+): Promise<{ success: boolean; profile: { id: number; displayName: string; sessionKey: string } }> {
+  const response = await fetch(`/${locale}/api/fantasy/profile`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sessionKey, displayName }),
+  })
+
+  return readJson<{ success: boolean; profile: { id: number; displayName: string; sessionKey: string } }>(response)
+}

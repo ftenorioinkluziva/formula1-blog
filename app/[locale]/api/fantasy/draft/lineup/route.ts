@@ -31,7 +31,10 @@ export async function POST(request: NextRequest): Promise<Response> {
       message === "asset_type_mismatch" ||
       message === "driver_already_selected" ||
       message === "entry_locked" ||
-      message === "lock_closed"
+      message === "lock_closed" ||
+      message === "team_locked" ||
+      message === "no_driver_transfers_left" ||
+      message === "no_engineer_transfers_left"
         ? 400
         : 500
 
@@ -61,7 +64,13 @@ export async function DELETE(request: NextRequest): Promise<Response> {
     return NextResponse.json(result)
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to update lineup"
-    const status = message === "entry_locked" ? 400 : 500
+    const status =
+      message === "entry_locked" ||
+      message === "team_locked" ||
+      message === "no_driver_transfers_left" ||
+      message === "no_engineer_transfers_left"
+        ? 400
+        : 500
     return NextResponse.json({ error: message }, { status })
   }
 }

@@ -104,14 +104,14 @@ async function main() {
     .values({
       season,
       name: `Fantasy ${season}`,
-      budgetCap: 80,
+      budgetCap: 100,
       isActive: true,
     })
     .onConflictDoUpdate({
       target: fantasySeasons.season,
       set: {
         name: `Fantasy ${season}`,
-        budgetCap: 80,
+        budgetCap: 100,
         isActive: true,
         updatedAt: new Date(),
       },
@@ -132,7 +132,7 @@ async function main() {
     .insert(fantasyRulesets)
     .values({
       seasonId: fantasySeason.id,
-      lockPhase: "qualifying_start",
+      lockPhase: "fp1_start_30m",
       freeDriverTransfers: 2,
       freeEngineerTransfers: 1,
       extraDriverTransferPenalty: 10,
@@ -143,7 +143,7 @@ async function main() {
     .onConflictDoUpdate({
       target: fantasyRulesets.seasonId,
       set: {
-        lockPhase: "qualifying_start",
+        lockPhase: "fp1_start_30m",
         freeDriverTransfers: 2,
         freeEngineerTransfers: 1,
         extraDriverTransferPenalty: 10,
