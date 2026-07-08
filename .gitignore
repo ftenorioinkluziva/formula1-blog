@@ -39,3 +39,6 @@ public/videos/
 Thumbs.db
 .idea/
 .vscode/
+
+# cache
+.cache/
