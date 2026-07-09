@@ -190,6 +190,12 @@ export async function ensureFantasyDraft(season: number, round: number, userId: 
           userId,
         })
         .returning()
+    } else if (displayName && profile.displayName !== displayName.trim()) {
+      ;[profile] = await tx
+        .update(fantasyProfiles)
+        .set({ displayName: displayName.trim(), updatedAt: new Date() })
+        .where(eq(fantasyProfiles.id, profile.id))
+        .returning()
     }
 
     let [entry] = await tx

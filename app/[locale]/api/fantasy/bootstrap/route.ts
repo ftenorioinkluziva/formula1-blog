@@ -25,6 +25,25 @@ export async function GET(request: Request): Promise<Response> {
     }
 
     const profile = await getFantasyProfileByUserId(userId)
+    
+    if (profile && session.user.name && profile.displayName !== session.user.name) {
+      const { getDb } = await import("@/lib/db/client")
+      const { fantasyProfiles } = await import("@/lib/db/schema")
+      const { eq } = await import("drizzle-orm")
+      const dbClient = getDb()
+      if (dbClient) {
+        try {
+          await dbClient
+            .update(fantasyProfiles)
+            .set({ displayName: session.user.name, updatedAt: new Date() })
+            .where(eq(fantasyProfiles.id, profile.id))
+          profile.displayName = session.user.name
+        } catch (err) {
+          console.warn("Failed to sync profile displayName with session name:", err)
+        }
+      }
+    }
+
     const entry = profile ? await getFantasyEntry(profile.id, context.fantasySeasonId, context.weekendId) : null
 
     return NextResponse.json({

@@ -105,9 +105,9 @@ export function FantasyDraftSection({
                 <span className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">{t("profileName")}</span>
                 <Input
                   value={displayName}
-                  onChange={(event) => onDisplayNameChange(event.target.value)}
-                  onBlur={() => onDisplayNameSave(displayName)}
-                  className="border-zinc-800 bg-zinc-900 text-zinc-100"
+                  readOnly
+                  disabled
+                  className="border-zinc-800 bg-zinc-900/50 text-zinc-400 cursor-not-allowed select-none opacity-80"
                   data-testid="fantasy-display-name-input"
                 />
               </label>
