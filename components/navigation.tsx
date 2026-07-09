@@ -66,11 +66,10 @@ export function Navigation() {
     })),
   ]
 
-  // Add Live, Replay and Admin routes if authenticated
+  // Add Live and Admin routes if authenticated
   if (session?.authenticated) {
     navLinks.push(
-      { label: "F1 Live", href: `/${locale}/live` },
-      { label: "Replays", href: `/${locale}/replay` }
+      { label: "F1 Live", href: `/${locale}/live` }
     )
   }
 
@@ -186,14 +185,7 @@ export function Navigation() {
                     F1 Live Stream
                   </Link>
 
-                  <Link
-                    href="/replay"
-                    onClick={() => setDropdownOpen(false)}
-                    className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:bg-[#161616] transition-colors"
-                  >
-                    <PlayCircle className="h-3.5 w-3.5 text-primary" />
-                    VOD Replays
-                  </Link>
+
 
                   {isAdminOrEditor && (
                     <>
