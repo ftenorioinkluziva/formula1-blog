@@ -223,6 +223,7 @@ async function getRoundCandidates(target?: ActiveRaceWindow): Promise<RoundCandi
     : and(
         inArray(raceSessions.sessionType, ["Sprint", "Race"]),
         gt(raceSessions.endTimeUtc, threshold),
+        lte(raceSessions.endTimeUtc, new Date()),
       )
 
   const sessions = await db

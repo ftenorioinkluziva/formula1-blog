@@ -657,7 +657,8 @@ export const fantasyProfiles = pgTable(
   {
     id: serial("id").primaryKey(),
     displayName: text("display_name").notNull(),
-    sessionKey: text("session_key").notNull(),
+    sessionKey: text("session_key"),
+    userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
     favoriteTeamId: integer("favorite_team_id").references(() => teams.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
@@ -666,7 +667,7 @@ export const fantasyProfiles = pgTable(
       .$onUpdate(() => sql`now()`),
   },
   (table) => ({
-    sessionKeyUniqueIdx: uniqueIndex("fantasy_profiles_session_key_unique_idx").on(table.sessionKey),
+    userIdUniqueIdx: uniqueIndex("fantasy_profiles_user_id_unique_idx").on(table.userId),
     favoriteTeamIdx: index("fantasy_profiles_favorite_team_idx").on(table.favoriteTeamId),
   }),
 )
@@ -1054,4 +1055,98 @@ export type EditorialAssignment = typeof editorialAssignments.$inferSelect
 export type EditorialSourcePacket = typeof editorialSourcePackets.$inferSelect
 export type EditorialReview = typeof editorialReviews.$inferSelect
 export type ArticleSourceLink = typeof articleSourceLinks.$inferSelect
+
+// Better Auth tables
+export const user = pgTable("user", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  emailVerified: boolean("email_verified").notNull(),
+  image: text("image"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+})
+
+export const session = pgTable("session", {
+  id: text("id").primaryKey(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  token: text("token").notNull().unique(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+})
+
+export const account = pgTable("account", {
+  id: text("id").primaryKey(),
+  accountId: text("account_id").notNull(),
+  providerId: text("provider_id").notNull(),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  idToken: text("id_token"),
+  accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
+  refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { withTimezone: true }),
+  scope: text("scope"),
+  password: text("password"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+})
+
+export const verification = pgTable("verification", {
+  id: text("id").primaryKey(),
+  identifier: text("identifier").notNull(),
+  value: text("value").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }),
+})
+
+// Custom User Profile table for roles and app metadata
+export const userProfiles = pgTable(
+  "user_profiles",
+  {
+    userId: text("user_id").primaryKey().references(() => user.id, { onDelete: "cascade" }),
+    role: text("role").notNull().default("user"), // "user", "editor", "admin"
+    displayName: text("display_name"),
+    f1tvEmail: text("f1tv_email"),
+    f1tvPassword: text("f1tv_password"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => sql`now()`),
+  },
+  (table) => ({
+    userIdIdx: index("user_profiles_user_id_idx").on(table.userId),
+  })
+)
+
+export type User = typeof user.$inferSelect
+export type Session = typeof session.$inferSelect
+export type Account = typeof account.$inferSelect
+export type Verification = typeof verification.$inferSelect
+export type UserProfile = typeof userProfiles.$inferSelect
+
+export const adminAuditLog = pgTable(
+  "admin_audit_log",
+  {
+    id: serial("id").primaryKey(),
+    actorUserId: text("actor_user_id").notNull(),
+    actorRole: text("actor_role").notNull(),
+    action: text("action").notNull(),
+    targetType: text("target_type").notNull(),
+    targetId: text("target_id"),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    actorIdx: index("admin_audit_log_actor_idx").on(table.actorUserId),
+    actionIdx: index("admin_audit_log_action_idx").on(table.action),
+    targetIdx: index("admin_audit_log_target_idx").on(table.targetType, table.targetId),
+  })
+)
+
+export type AdminAuditLog = typeof adminAuditLog.$inferSelect
 

@@ -2,21 +2,24 @@ import { NextRequest, NextResponse } from "next/server"
 import { eq } from "drizzle-orm"
 import { getDb } from "@/lib/db/client"
 import { fantasyProfiles } from "@/lib/db/schema"
+import { requireUser } from "@/lib/auth/guards"
 
 export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest): Promise<Response> {
+  const session = await requireUser()
+  if (session instanceof Response) return session
+  const userId = session.user.id
+
   try {
     const body = (await request.json().catch(() => ({}))) as {
-      sessionKey?: string
       displayName?: string
     }
 
-    const sessionKey = body.sessionKey?.trim()
     const displayName = body.displayName?.trim()
 
-    if (!sessionKey || !displayName) {
-      return NextResponse.json({ error: "sessionKey and displayName required" }, { status: 400 })
+    if (!displayName) {
+      return NextResponse.json({ error: "displayName required" }, { status: 400 })
     }
 
     const db = getDb()
@@ -31,7 +34,7 @@ export async function POST(request: NextRequest): Promise<Response> {
         displayName,
         updatedAt: new Date(),
       })
-      .where(eq(fantasyProfiles.sessionKey, sessionKey))
+      .where(eq(fantasyProfiles.userId, userId))
       .returning()
 
     if (!updated) {
@@ -43,7 +46,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       profile: {
         id: updated.id,
         displayName: updated.displayName,
-        sessionKey: updated.sessionKey,
+        userId: updated.userId,
       },
     })
   } catch (error) {

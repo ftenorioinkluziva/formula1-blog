@@ -106,7 +106,7 @@ export interface FantasyBootstrapResponse {
   profile: {
     id: number
     displayName: string
-    sessionKey: string
+    userId?: string | null
   } | null
   lockStatus: FantasyLockStatus
   lockAt: string | null
@@ -126,7 +126,7 @@ export interface FantasyDraftResponse {
   profile: {
     id: number
     displayName: string
-    sessionKey: string
+    userId?: string
   }
   entry: {
     id: number
@@ -146,6 +146,7 @@ export interface FantasyReviewResponse {
   lineup: FantasyLineupState
   budget: FantasyBudgetSnapshot
   eligibility: FantasyEligibilityState
+  entryStatus: string
   predictions: {
     exists: boolean
     isComplete: boolean

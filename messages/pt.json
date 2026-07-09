@@ -245,5 +245,20 @@
       "sectionTitle": "Novas Visualizações — Em Validação",
       "rawDataDescription": "Dados brutos da API ainda não expostos nas páginas principais: LapSeries · WeatherDataSeries · Segments · Speeds I1/I2/FL/ST · ChampionshipPrediction · ContentStreams · CarData.z"
     }
+  },
+  "auth": {
+    "signInTitle": "Iniciar Sessão",
+    "signInSubtitle": "Acesse seu painel administrativo ou conta do fantasy",
+    "emailLabel": "Endereço de E-mail",
+    "passwordLabel": "Senha",
+    "signInButton": "Entrar",
+    "signingInButton": "Entrando...",
+    "signInError": "E-mail ou senha inválidos",
+    "accountTitle": "Minha Conta",
+    "accountSubtitle": "Gerencie seu perfil e detalhes da sessão",
+    "logoutButton": "Sair",
+    "roleLabel": "Função",
+    "nameLabel": "Nome",
+    "createdAtLabel": "Membro Desde"
   }
 }

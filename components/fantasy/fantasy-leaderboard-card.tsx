@@ -14,7 +14,6 @@ interface Props {
   leaderboard: FantasyLeaderboardResponse | null
   weekends: RaceWeekendOption[]
   currentRound: number
-  sessionKey: string
   locale: string
 }
 
@@ -81,7 +80,7 @@ function LeaderboardList({
   )
 }
 
-export function FantasyLeaderboardCard({ leaderboard, weekends, currentRound, sessionKey, locale }: Props) {
+export function FantasyLeaderboardCard({ leaderboard, weekends, currentRound, locale }: Props) {
   const SEASON = 2026
   const t = useTranslations("fantasy.leaderboard")
   const [mode, setMode] = useState<"overall" | "round">("overall")
@@ -116,7 +115,7 @@ export function FantasyLeaderboardCard({ leaderboard, weekends, currentRound, se
     const timer = window.setTimeout(() => {
       setLoadingRound(true)
 
-      getFantasyLeaderboard(locale, SEASON, selectedRound, sessionKey)
+      getFantasyLeaderboard(locale, SEASON, selectedRound)
         .then((data) => {
           if (!cancelled) setRoundLeaderboard(data)
         })
@@ -132,7 +131,7 @@ export function FantasyLeaderboardCard({ leaderboard, weekends, currentRound, se
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [selectedRound, currentRound, leaderboard, locale, sessionKey])
+  }, [selectedRound, currentRound, leaderboard, locale])
 
   const overallEntries = useMemo(() => {
     const entries = leaderboard?.season.official.entries ?? []

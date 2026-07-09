@@ -97,14 +97,16 @@ async function main(): Promise<void> {
     process.exit(1)
   }
 
-  console.log(`Logging in as ${email}...\n`)
+  const isHeadless = process.env.HEADLESS === 'true' || process.argv.includes('--headless')
+  console.log(`Logging in as ${email} (headless = ${isHeadless})...\n`)
 
   const browser = await chromium.launch({
-    headless: false,
+    headless: isHeadless,
     args: [
       '--disable-blink-features=AutomationControlled',
       '--no-sandbox',
       '--disable-infobars',
+      '--disable-setuid-sandbox',
     ],
   })
 
@@ -166,6 +168,19 @@ async function main(): Promise<void> {
 
     saveTokenToEnv(cookieValue)
     console.log(`\nF1TV_TOKEN saved to ${ENV_FILE}`)
+    
+    try {
+      const { saveTokenToRedis } = await import('../lib/f1tv/token-store')
+      const savedRedis = await saveTokenToRedis(cookieValue)
+      if (savedRedis) {
+        console.log('F1TV_TOKEN successfully saved to Redis!')
+      } else {
+        console.warn('Failed to save F1TV_TOKEN to Redis (Redis might be offline/unreachable)')
+      }
+    } catch (err) {
+      console.warn('Failed to save F1TV_TOKEN to Redis:', err)
+    }
+    
     console.log('Restart pnpm dev to apply the new token.')
   } finally {
     await browser.close()

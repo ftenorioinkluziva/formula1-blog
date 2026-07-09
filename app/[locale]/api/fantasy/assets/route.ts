@@ -1,15 +1,19 @@
 import { NextResponse } from "next/server"
 import { getFantasyDriverAssets, getFantasyTeamAssets } from "@/lib/db/fantasy-assets"
+import { requireUser } from "@/lib/auth/guards"
 
 export const dynamic = "force-dynamic"
 
 export async function GET(request: Request): Promise<Response> {
+  const session = await requireUser()
+  if (session instanceof Response) return session
+  const userId = session.user.id
+
   try {
     const { searchParams } = new URL(request.url)
     const season = parseInt(searchParams.get("season") ?? "", 10)
     const round = parseInt(searchParams.get("round") ?? "", 10)
     const type = searchParams.get("type")
-    const sessionKey = searchParams.get("sessionKey") ?? undefined
 
     if (!season || !round || !type) {
       return NextResponse.json({ error: "season, round and type required" }, { status: 400 })
@@ -17,9 +21,9 @@ export async function GET(request: Request): Promise<Response> {
 
     const response =
       type === "driver"
-        ? await getFantasyDriverAssets(season, round, sessionKey)
+        ? await getFantasyDriverAssets(season, round, userId)
         : type === "team"
-          ? await getFantasyTeamAssets(season, round, sessionKey)
+          ? await getFantasyTeamAssets(season, round, userId)
           : null
 
     if (!response) {

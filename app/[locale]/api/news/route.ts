@@ -1,7 +1,7 @@
-
 import { NextRequest, NextResponse } from "next/server"
-import { getNewsList } from "@/lib/db/news"
-import { insertNews } from '@/lib/db/news'
+import { getNewsList, insertNews } from "@/lib/db/news"
+import { requireAnyRole } from "@/lib/auth/guards"
+import { logAdminAction } from "@/lib/db/audit"
 
 export const dynamic = "force-dynamic"
 
@@ -21,6 +21,9 @@ export async function GET(): Promise<Response> {
 }
 
 export async function POST(req: NextRequest) {
+  const session = await requireAnyRole(["editor", "admin"])
+  if (session instanceof Response) return session
+
   try {
     const news = await req.json()
     // Validação básica
@@ -44,6 +47,17 @@ export async function POST(req: NextRequest) {
     if (!id) {
       return NextResponse.json({ error: 'Falha ao inserir notícia no banco.' }, { status: 500 })
     }
+
+    // Log the news creation action
+    await logAdminAction({
+      actorUserId: session.user.id,
+      actorRole: session.profile?.role || "user",
+      action: "create_news",
+      targetType: "news",
+      targetId: String(id),
+      metadataJson: { title: news.title },
+    })
+
     return NextResponse.json({ ok: true, id })
   } catch (err) {
     return NextResponse.json({ error: 'Erro ao processar notícia.' }, { status: 500 })

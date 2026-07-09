@@ -74,52 +74,56 @@ export async function loginWithF1TVCredentials(
   const proxyResult = await loginWithF1TVCredentialsViaProxy(email, password, apiKey)
   if (proxyResult) return proxyResult
 
-  const res = await fetch(authUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      apiKey,
-      "User-Agent": F1_USER_AGENT,
-    },
-    body: JSON.stringify({ Login: email, Password: password }),
-  })
-
-  const rawText = await res.text()
-  let authData: F1AuthResponse
   try {
-    authData = JSON.parse(rawText) as F1AuthResponse
-  } catch {
-    console.error("[f1tv/auth] Non-JSON response from F1 API:", rawText.slice(0, 300))
-    throw new Error(`F1 API returned non-JSON (${res.status}): ${rawText.slice(0, 120)}`)
-  }
+    const res = await fetch(authUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apiKey,
+        "User-Agent": F1_USER_AGENT,
+      },
+      body: JSON.stringify({ Login: email, Password: password }),
+    })
 
-  if (!res.ok || authData.resultCode === "ERR" || authData.errorDescription) {
-    throw new Error(authData.errorDescription ?? `Auth failed (${res.status})`)
-  }
+    const rawText = await res.text()
+    let authData: F1AuthResponse
+    try {
+      authData = JSON.parse(rawText) as F1AuthResponse
+    } catch {
+      console.error("[f1tv/auth] Non-JSON response from F1 API:", rawText.slice(0, 300))
+      throw new Error(`F1 API returned non-JSON (${res.status}): ${rawText.slice(0, 120)}`)
+    }
 
-  const subscriptionToken = authData.data?.subscriptionToken
-  if (!subscriptionToken) {
-    throw new Error("No subscription token in response")
-  }
+    if (!res.ok || authData.resultCode === "ERR" || authData.errorDescription) {
+      throw new Error(authData.errorDescription ?? `Auth failed (${res.status})`)
+    }
 
-  const decoded = decodeTokenPayload(subscriptionToken)
-  if (!decoded || typeof decoded.exp !== "number") {
-    throw new Error("Failed to decode token")
-  }
+    const subscriptionToken = authData.data?.subscriptionToken
+    if (!subscriptionToken) {
+      throw new Error("No subscription token in response")
+    }
 
-  const expiresAt = new Date(decoded.exp * 1000)
-  if (expiresAt < new Date()) {
-    throw new Error("Received token is already expired")
-  }
+    const decoded = decodeTokenPayload(subscriptionToken)
+    if (!decoded || typeof decoded.exp !== "number") {
+      throw new Error("Failed to decode token")
+    }
 
-  const rawCookieValue = encodeURIComponent(
-    JSON.stringify({ data: { subscriptionToken } }),
-  )
+    const expiresAt = new Date(decoded.exp * 1000)
+    if (expiresAt < new Date()) {
+      throw new Error("Received token is already expired")
+    }
 
-  return {
-    rawCookieValue,
-    decoded,
-    expiresAt,
+    const rawCookieValue = encodeURIComponent(
+      JSON.stringify({ data: { subscriptionToken } }),
+    )
+
+    return {
+      rawCookieValue,
+      decoded,
+      expiresAt,
+    }
+  } catch (error: any) {
+    throw error
   }
 }
 
@@ -230,4 +234,41 @@ export async function loginWithEnvCredentials(): Promise<F1TVLoginResult> {
   }
 
   return loginWithF1TVCredentials(email, password)
+}
+
+export async function loginWithDbCredentials(): Promise<F1TVLoginResult | null> {
+  const { getDb } = await import("@/lib/db/client")
+  const { userProfiles } = await import("@/lib/db/schema")
+  const { eq, and, isNotNull } = await import("drizzle-orm")
+  const { decryptPassword } = await import("./crypto")
+
+  const db = getDb()
+  if (!db) return null
+
+  try {
+    const [adminProfile] = await db
+      .select({
+        f1tvEmail: userProfiles.f1tvEmail,
+        f1tvPassword: userProfiles.f1tvPassword,
+      })
+      .from(userProfiles)
+      .where(
+        and(
+          eq(userProfiles.role, "admin"),
+          isNotNull(userProfiles.f1tvEmail),
+          isNotNull(userProfiles.f1tvPassword)
+        )
+      )
+      .limit(1)
+
+    if (!adminProfile || !adminProfile.f1tvEmail || !adminProfile.f1tvPassword) {
+      return null
+    }
+
+    const decryptedPassword = decryptPassword(adminProfile.f1tvPassword)
+    return await loginWithF1TVCredentials(adminProfile.f1tvEmail, decryptedPassword)
+  } catch (error) {
+    console.error("[f1tv/auth] Failed to log in with database credentials:", error)
+    throw error
+  }
 }

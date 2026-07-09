@@ -6,6 +6,8 @@ import {
   parseGalleryInput,
   updateAdminGallery,
 } from "@/lib/db/multimedia-admin"
+import { requireAnyRole } from "@/lib/auth/guards"
+import { logAdminAction } from "@/lib/db/audit"
 
 export const dynamic = "force-dynamic"
 
@@ -29,6 +31,9 @@ export async function GET(
   _req: NextRequest,
   context: { params: Promise<{ id: string }> },
 ): Promise<Response> {
+  const session = await requireAnyRole(["editor", "admin"])
+  if (session instanceof Response) return session
+
   try {
     const { id: idParam } = await context.params
     const id = parseId(idParam)
@@ -48,11 +53,25 @@ export async function PUT(
   req: NextRequest,
   context: { params: Promise<{ id: string }> },
 ): Promise<Response> {
+  const session = await requireAnyRole(["editor", "admin"])
+  if (session instanceof Response) return session
+
   try {
     const { id: idParam } = await context.params
     const id = parseId(idParam)
     const input = parseGalleryInput(await req.json())
     await updateAdminGallery(id, input)
+
+    // Log the gallery update
+    await logAdminAction({
+      actorUserId: session.user.id,
+      actorRole: session.profile?.role || "user",
+      action: "update_gallery",
+      targetType: "gallery",
+      targetId: idParam,
+      metadataJson: { title: input.title },
+    })
+
     return NextResponse.json({ ok: true })
   } catch (error) {
     return handleError(error)
@@ -63,10 +82,23 @@ export async function DELETE(
   _req: NextRequest,
   context: { params: Promise<{ id: string }> },
 ): Promise<Response> {
+  const session = await requireAnyRole(["editor", "admin"])
+  if (session instanceof Response) return session
+
   try {
     const { id: idParam } = await context.params
     const id = parseId(idParam)
     await deleteAdminGallery(id)
+
+    // Log the gallery deletion
+    await logAdminAction({
+      actorUserId: session.user.id,
+      actorRole: session.profile?.role || "user",
+      action: "delete_gallery",
+      targetType: "gallery",
+      targetId: idParam,
+    })
+
     return NextResponse.json({ ok: true })
   } catch (error) {
     return handleError(error)

@@ -253,6 +253,34 @@
       "when": 1773523800000,
       "tag": "0035_editorial_automation",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1773523900000,
+      "tag": "0036_create_auth_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1773524000000,
+      "tag": "0037_create_audit_log",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1773524100000,
+      "tag": "0038_migrate_fantasy_to_user",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1773524200000,
+      "tag": "0039_add_f1tv_credentials",
+      "breakpoints": true
     }
   ]
 }

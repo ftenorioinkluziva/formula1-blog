@@ -2,7 +2,7 @@ import { and, asc, eq, inArray } from "drizzle-orm"
 import { parseDurationToMs, isDnf } from "@/lib/analytics/lap-time-parser"
 import { resolveSessionId } from "@/lib/analytics/session-resolver"
 import { getDb } from "@/lib/db/client"
-import { getFantasyContext, getFantasyEntry, getFantasyProfileBySessionKey } from "@/lib/db/fantasy-core"
+import { getFantasyContext, getFantasyEntry, getFantasyProfileByUserId } from "@/lib/db/fantasy-core"
 import { getFantasyLineupState } from "@/lib/db/fantasy-draft"
 import {
   drivers,
@@ -1083,7 +1083,7 @@ async function calculateEntryScore(entry: typeof fantasyRoundEntries.$inferSelec
 export async function scoreFantasyRound(
   season: number,
   round: number,
-  sessionKey?: string,
+  userId?: string,
 ) {
   const db = getDb()
   const context = await getFantasyContext(season, round)
@@ -1094,8 +1094,8 @@ export async function scoreFantasyRound(
 
   let entries: Array<typeof fantasyRoundEntries.$inferSelect> = []
 
-  if (sessionKey) {
-    const profile = await getFantasyProfileBySessionKey(sessionKey)
+  if (userId) {
+    const profile = await getFantasyProfileByUserId(userId)
 
     if (!profile) {
       return null

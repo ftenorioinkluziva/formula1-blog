@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
-import { and, eq, lt, gte, sql, isNull, not, exists } from "drizzle-orm"
+import { and, eq, lt, gte, sql } from "drizzle-orm"
 import { getDb } from "@/lib/db/client"
-import { fantasySeasons, raceWeekends, raceSessions, fantasyRoundScores, fantasyRoundEntries } from "@/lib/db/schema"
+import { fantasySeasons, raceWeekends, raceSessions, fantasyRoundScores } from "@/lib/db/schema"
 import { scoreFantasyRound } from "@/lib/db/fantasy-scoring"
 import { evolveFantasyPrices } from "@/lib/db/fantasy-pricing"
+import { requireAdmin } from "@/lib/auth/guards"
+import { logAdminAction } from "@/lib/db/audit"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 120
@@ -16,14 +18,19 @@ interface RoundResult {
 }
 
 export async function GET(request: NextRequest): Promise<Response> {
-  const adminSecret = process.env.ADMIN_SECRET
-  if (!adminSecret) {
-    return NextResponse.json({ error: "Unauthorized: ADMIN_SECRET not configured on server" }, { status: 401 })
-  }
+  let actorUserId = "system:admin-secret"
+  let actorRole = "admin"
 
-  const headerSecret = request.headers.get("x-admin-secret")
-  if (headerSecret !== adminSecret) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const authSession = await requireAdmin()
+  if (authSession instanceof Response) {
+    const adminSecret = process.env.ADMIN_SECRET
+    const headerSecret = request.headers.get("x-admin-secret")
+    if (!adminSecret || headerSecret !== adminSecret) {
+      return authSession
+    }
+  } else {
+    actorUserId = authSession.user.id
+    actorRole = authSession.profile?.role || "admin"
   }
 
   const db = getDb()
@@ -106,6 +113,16 @@ export async function GET(request: NextRequest): Promise<Response> {
       results.push({ round: weekend.round, weekend: weekend.grandPrixName, status: "error", detail: message })
     }
   }
+
+  // Log the auto-scoring action
+  await logAdminAction({
+    actorUserId,
+    actorRole,
+    action: "fantasy_auto_score",
+    targetType: "fantasy_auto_scoring",
+    targetId: String(activeSeason.season),
+    metadataJson: { results },
+  })
 
   return NextResponse.json({ season: activeSeason.season, rounds: results })
 }

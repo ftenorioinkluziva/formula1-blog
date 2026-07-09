@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getDb } from "@/lib/db/client"
 import { f1tvSyncPoints } from "@/lib/db/schema"
 import { and, eq, isNull } from "drizzle-orm"
+import { requireAdmin } from "@/lib/auth/guards"
 
 export const dynamic = "force-dynamic"
 
@@ -43,6 +44,9 @@ export async function GET(request: Request): Promise<Response> {
 }
 
 export async function POST(request: Request): Promise<Response> {
+  const session = await requireAdmin()
+  if (session instanceof Response) return session
+
   const body = await request.json()
   const { sessionId, contentId, channelId, streamStartUtc } = body as {
     sessionId: number

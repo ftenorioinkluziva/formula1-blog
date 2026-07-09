@@ -1,6 +1,10 @@
 export const runtime = "nodejs"
 
 export async function register() {
+  if (process.env.INSTRUMENTATION_ENABLED === "0") {
+    return
+  }
+
   const isEdgeRuntime = typeof (globalThis as { EdgeRuntime?: unknown }).EdgeRuntime !== "undefined"
   if (isEdgeRuntime) {
     return

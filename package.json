@@ -34,6 +34,7 @@
     "db:session-scheduler": "pnpm exec tsx scripts/session-scheduler.ts"
   },
   "dependencies": {
+    "@better-auth/drizzle-adapter": "1.6.23",
     "@elevenlabs/elevenlabs-js": "^2.40.0",
     "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^3.9.1",
@@ -68,6 +69,7 @@
     "@upstash/redis": "^1.37.0",
     "@vercel/analytics": "1.6.1",
     "autoprefixer": "^10.4.20",
+    "better-auth": "1.6.23",
     "class-variance-authority": "^0.7.1",
     "cloudinary": "^2.9.0",
     "clsx": "^2.1.1",

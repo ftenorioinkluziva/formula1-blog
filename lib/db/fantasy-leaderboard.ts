@@ -1,6 +1,6 @@
 import { asc, eq } from "drizzle-orm"
 import { getDb } from "@/lib/db/client"
-import { getFantasyContext, getFantasyProfileBySessionKey } from "@/lib/db/fantasy-core"
+import { getFantasyContext, getFantasyProfileByUserId } from "@/lib/db/fantasy-core"
 import { fantasyProfiles, fantasyRoundEntries, fantasyRoundScores, raceWeekends } from "@/lib/db/schema"
 
 export interface FantasyLeaderboardEntry {
@@ -83,7 +83,7 @@ function rankLeaderboardRows(rows: BaseLeaderboardRow[], currentProfileId: numbe
 export async function getFantasyLeaderboard(
   season: number,
   round: number,
-  sessionKey?: string,
+  userId?: string,
 ): Promise<FantasyLeaderboardState | null> {
   const db = getDb()
   const context = await getFantasyContext(season, round)
@@ -92,7 +92,7 @@ export async function getFantasyLeaderboard(
     return null
   }
 
-  const profile = sessionKey ? await getFantasyProfileBySessionKey(sessionKey) : null
+  const profile = userId ? await getFantasyProfileByUserId(userId) : null
   const currentProfileId = profile?.id ?? null
 
   const [weekendRow] = await db

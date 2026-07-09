@@ -32,3 +32,14 @@ export function getDb(): AppDatabase | null {
 
   return globalThis.__f1BlogDatabase
 }
+
+export async function closeDb(): Promise<void> {
+  const pool = globalThis.__f1BlogDbPool
+
+  globalThis.__f1BlogDatabase = undefined
+  globalThis.__f1BlogDbPool = undefined
+
+  if (pool) {
+    await pool.end()
+  }
+}

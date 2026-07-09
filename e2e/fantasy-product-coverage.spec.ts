@@ -9,26 +9,31 @@ import {
   type ReviewResponse,
   chooseCheapestAssets,
   clickAndWaitForMutation,
+  closeTestDatabase,
   createDraft,
   fetchJson,
   fillPredictions,
   findOpenRound,
-  seedSessionKey,
+  registerAndLogin,
+  linkUserToProfile,
 } from "./fantasy-test-utils"
+
+test.afterAll(async () => {
+  await closeTestDatabase()
+})
 
 test("permite escolher um Pit Wall Lead de equipe diferente da dupla de pilotos", async ({ page, request }) => {
   // #given
-  const sessionKey = `fantasy-pitwall-e2e-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
-  const round = await findOpenRound(request, sessionKey)
+  const { cookieHeader } = await registerAndLogin(page, request)
+  const round = await findOpenRound(request, cookieHeader)
 
   test.skip(round === null, "Nenhuma rodada fantasy aberta foi encontrada para o teste E2E.")
 
-  await createDraft(request, round, sessionKey)
-  await seedSessionKey(page, sessionKey)
+  await createDraft(request, round, cookieHeader)
 
-  const driversPayload = await fetchJson<AssetListResponse>(request, `/${LOCALE}/api/fantasy/assets?season=${SEASON}&round=${round}&type=driver&sessionKey=${sessionKey}`)
-  const teamsPayload = await fetchJson<AssetListResponse>(request, `/${LOCALE}/api/fantasy/assets?season=${SEASON}&round=${round}&type=team&sessionKey=${sessionKey}`)
-  const pitWallPayload = await fetchJson<PitWallLeadsResponse>(request, `/${LOCALE}/api/fantasy/engineers?season=${SEASON}&round=${round}&sessionKey=${sessionKey}`)
+  const driversPayload = await fetchJson<AssetListResponse>(request, `/${LOCALE}/api/fantasy/assets?season=${SEASON}&round=${round}&type=driver`, cookieHeader)
+  const teamsPayload = await fetchJson<AssetListResponse>(request, `/${LOCALE}/api/fantasy/assets?season=${SEASON}&round=${round}&type=team`, cookieHeader)
+  const pitWallPayload = await fetchJson<PitWallLeadsResponse>(request, `/${LOCALE}/api/fantasy/engineers?season=${SEASON}&round=${round}`, cookieHeader)
 
   const [driverOne, driverTwo] = chooseCheapestAssets(driversPayload.items, 2)
   const [team] = chooseCheapestAssets(teamsPayload.items, 1)
@@ -47,7 +52,7 @@ test("permite escolher um Pit Wall Lead de equipe diferente da dupla de pilotos"
   await clickAndWaitForMutation(page, page.getByTestId(`fantasy-select-team-${team.assetId}`), "/api/fantasy/draft/lineup", savePredictionsButton)
   await clickAndWaitForMutation(page, page.getByTestId(`fantasy-select-engineer-${pitWallFromDifferentTeam.assetId}`), "/api/fantasy/draft/lineup", savePredictionsButton)
 
-  const review = await fetchJson<ReviewResponse>(request, `/${LOCALE}/api/fantasy/review?season=${SEASON}&round=${round}&sessionKey=${sessionKey}`)
+  const review = await fetchJson<ReviewResponse>(request, `/${LOCALE}/api/fantasy/review?season=${SEASON}&round=${round}`, cookieHeader)
 
   // #then
   expect(review.lineup.engineer?.assetId).toBe(pitWallFromDifferentTeam.assetId)
@@ -56,19 +61,18 @@ test("permite escolher um Pit Wall Lead de equipe diferente da dupla de pilotos"
 
 test("bloqueia mutacoes de lineup e predictions depois do lock", async ({ page, request }) => {
   // #given
-  const sessionKey = `fantasy-lock-e2e-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
-  const round = await findOpenRound(request, sessionKey)
+  const { cookieHeader } = await registerAndLogin(page, request)
+  const round = await findOpenRound(request, cookieHeader)
 
   test.skip(round === null, "Nenhuma rodada fantasy aberta foi encontrada para o teste E2E.")
 
-  await createDraft(request, round, sessionKey)
-  await seedSessionKey(page, sessionKey)
+  await createDraft(request, round, cookieHeader)
 
   const [driversPayload, teamsPayload, pitWallPayload, predictionsPayload] = await Promise.all([
-    fetchJson<AssetListResponse>(request, `/${LOCALE}/api/fantasy/assets?season=${SEASON}&round=${round}&type=driver&sessionKey=${sessionKey}`),
-    fetchJson<AssetListResponse>(request, `/${LOCALE}/api/fantasy/assets?season=${SEASON}&round=${round}&type=team&sessionKey=${sessionKey}`),
-    fetchJson<PitWallLeadsResponse>(request, `/${LOCALE}/api/fantasy/engineers?season=${SEASON}&round=${round}&sessionKey=${sessionKey}`),
-    fetchJson<PredictionOptionsResponse>(request, `/${LOCALE}/api/fantasy/draft/predictions?season=${SEASON}&round=${round}&sessionKey=${sessionKey}`),
+    fetchJson<AssetListResponse>(request, `/${LOCALE}/api/fantasy/assets?season=${SEASON}&round=${round}&type=driver`, cookieHeader),
+    fetchJson<AssetListResponse>(request, `/${LOCALE}/api/fantasy/assets?season=${SEASON}&round=${round}&type=team`, cookieHeader),
+    fetchJson<PitWallLeadsResponse>(request, `/${LOCALE}/api/fantasy/engineers?season=${SEASON}&round=${round}`, cookieHeader),
+    fetchJson<PredictionOptionsResponse>(request, `/${LOCALE}/api/fantasy/draft/predictions?season=${SEASON}&round=${round}`, cookieHeader),
   ])
 
   const [driverOne, driverTwo] = chooseCheapestAssets(driversPayload.items, 2)
@@ -90,19 +94,19 @@ test("bloqueia mutacoes de lineup e predictions depois do lock", async ({ page, 
   await clickAndWaitForMutation(page, lockButton, "/api/fantasy/lock")
 
   const lineupMutation = await request.post(`/${LOCALE}/api/fantasy/draft/lineup`, {
+    headers: { Cookie: cookieHeader },
     data: {
       season: SEASON,
       round,
-      sessionKey,
       slotType: "team",
       assetId: team.assetId,
     },
   })
   const predictionsMutation = await request.post(`/${LOCALE}/api/fantasy/draft/predictions`, {
+    headers: { Cookie: cookieHeader },
     data: {
       season: SEASON,
       round,
-      sessionKey,
       predictions: {
         poleDriverId: predictionsPayload.drivers[0]?.id ?? 0,
         raceWinnerDriverId: predictionsPayload.drivers[0]?.id ?? 0,
@@ -133,19 +137,22 @@ test("abre uma rodada finalizada com breakdown persistido e UI bloqueada", async
   const round = 1
   const sessionKey = "fantasy-score-r1"
 
+  const { cookieHeader, userId } = await registerAndLogin(page, request)
+  await linkUserToProfile(userId, sessionKey)
+
   const bootstrap = await fetchJson<{ lockStatus: "open" | "closing_soon" | "locked" | "finished" }>(
     request,
-    `/${LOCALE}/api/fantasy/bootstrap?season=${SEASON}&round=${round}&sessionKey=${sessionKey}`,
+    `/${LOCALE}/api/fantasy/bootstrap?season=${SEASON}&round=${round}`,
+    cookieHeader,
   )
   const result = await fetchJson<ResultResponse>(
     request,
-    `/${LOCALE}/api/fantasy/result?season=${SEASON}&round=${round}&sessionKey=${sessionKey}`,
+    `/${LOCALE}/api/fantasy/result?season=${SEASON}&round=${round}`,
+    cookieHeader,
   )
 
   test.skip(bootstrap.lockStatus !== "finished", "A rodada 1 nao esta finalizada neste ambiente.")
   test.skip(!result.summary.isOfficial, "A rodada 1 ainda nao possui score oficial persistido neste ambiente.")
-
-  await seedSessionKey(page, sessionKey)
 
   // #when
   await page.goto(`/${LOCALE}/fantasy?round=${round}`)

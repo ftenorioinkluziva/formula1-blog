@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ensureAuthenticated } from '@/lib/f1tv/auth'
+import { requireUser } from '@/lib/auth/guards'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,6 +17,9 @@ function sanitizeLicenseUrl(raw: string | null): string | null {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await requireUser()
+  if (session instanceof Response) return session
+
   const laUrl = sanitizeLicenseUrl(request.nextUrl.searchParams.get('laURL'))
   if (!laUrl) {
     return NextResponse.json({ error: 'Invalid laURL' }, { status: 400 })

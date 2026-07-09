@@ -7,7 +7,10 @@ import { asc, eq, sql } from "drizzle-orm"
 import { getTranslations } from "next-intl/server"
 import { Link } from "@/lib/i18n/routing"
 import { HelpCircle } from "lucide-react"
+import { requireUserPage } from "@/lib/auth/guards"
 import type { RaceWeekendOption } from "@/lib/analytics/types"
+
+export const dynamic = "force-dynamic"
 
 interface PageProps {
   params: Promise<{ locale: string }>
@@ -104,6 +107,10 @@ function resolveCurrentFantasyRound(weekends: FantasyWeekendOption[]): number {
 
 export default async function FantasyPage({ params, searchParams }: PageProps) {
   const { locale } = await params
+  
+  // Guard fantasy page: require user session
+  const { user } = await requireUserPage(locale)
+
   const sp = await searchParams
   const t = await getTranslations("fantasy")
   const weekends = await getFantasyWeekends()
@@ -134,7 +141,7 @@ export default async function FantasyPage({ params, searchParams }: PageProps) {
             </div>
           </div>
 
-          <FantasyDashboard locale={locale} weekends={weekends} initialRound={initialRound} />
+          <FantasyDashboard locale={locale} weekends={weekends} initialRound={initialRound} initialDisplayName={user.name || undefined} />
         </div>
       </main>
       <SiteFooter />

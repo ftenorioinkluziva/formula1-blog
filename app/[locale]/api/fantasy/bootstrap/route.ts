@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server"
-import { getFantasyContext, getFantasyEntry, getFantasyProfileBySessionKey } from "@/lib/db/fantasy-core"
+import { getFantasyContext, getFantasyEntry, getFantasyProfileByUserId } from "@/lib/db/fantasy-core"
+import { requireUser } from "@/lib/auth/guards"
 
 export const dynamic = "force-dynamic"
 
 export async function GET(request: Request): Promise<Response> {
+  const session = await requireUser()
+  if (session instanceof Response) return session
+  const userId = session.user.id
+
   try {
     const { searchParams } = new URL(request.url)
     const season = parseInt(searchParams.get("season") ?? "", 10)
     const round = parseInt(searchParams.get("round") ?? "", 10)
-    const sessionKey = searchParams.get("sessionKey") ?? undefined
 
     if (!season || !round) {
       return NextResponse.json({ error: "season and round required" }, { status: 400 })
@@ -20,7 +24,7 @@ export async function GET(request: Request): Promise<Response> {
       return NextResponse.json({ error: "Fantasy context not found" }, { status: 404 })
     }
 
-    const profile = sessionKey ? await getFantasyProfileBySessionKey(sessionKey) : null
+    const profile = await getFantasyProfileByUserId(userId)
     const entry = profile ? await getFantasyEntry(profile.id, context.fantasySeasonId, context.weekendId) : null
 
     return NextResponse.json({
@@ -36,7 +40,7 @@ export async function GET(request: Request): Promise<Response> {
       profile: profile ? {
         id: profile.id,
         displayName: profile.displayName,
-        sessionKey: profile.sessionKey,
+        userId: profile.userId,
       } : null,
       lockStatus: context.lockStatus,
       lockAt: context.lockAt,

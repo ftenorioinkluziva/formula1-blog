@@ -9,7 +9,7 @@ import { resultadoQualifyingTemplate } from "./templates/resultado-qualifying"
 import { previewTemplate } from "./templates/preview"
 
 function getGeminiApiKey(): string {
-  return process.env.GOOGLE_AI_API_KEY ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY ?? ""
+  return process.env.GOOGLE_AI_API_KEY ?? ""
 }
 
 function stripCodeFences(text: string): string {

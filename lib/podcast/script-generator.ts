@@ -222,7 +222,8 @@ export async function getRaceDataForScript(weekendInfo: LastRaceInfo): Promise<R
 }
 
 export async function generatePodcastScript(raceData: RaceData): Promise<string> {
-  const genai = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY!)
+  const apiKey = process.env.GOOGLE_AI_API_KEY ?? ""
+  const genai = new GoogleGenerativeAI(apiKey)
   const model = genai.getGenerativeModel({ model: "gemini-2.5-flash" })
 
   const top3 = raceData.results.slice(0, 3)

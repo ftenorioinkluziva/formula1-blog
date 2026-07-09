@@ -1,17 +1,24 @@
 import { NextRequest, NextResponse } from "next/server"
 import { evolveFantasyPrices } from "@/lib/db/fantasy-pricing"
+import { requireAdmin } from "@/lib/auth/guards"
+import { logAdminAction } from "@/lib/db/audit"
 
 export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest): Promise<Response> {
-  const adminSecret = process.env.ADMIN_SECRET
-  if (!adminSecret) {
-    return NextResponse.json({ error: "Unauthorized: ADMIN_SECRET not configured on server" }, { status: 401 })
-  }
+  let actorUserId = "system:admin-secret"
+  let actorRole = "admin"
 
-  const headerSecret = request.headers.get("x-admin-secret")
-  if (headerSecret !== adminSecret) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const authSession = await requireAdmin()
+  if (authSession instanceof Response) {
+    const adminSecret = process.env.ADMIN_SECRET
+    const headerSecret = request.headers.get("x-admin-secret")
+    if (!adminSecret || headerSecret !== adminSecret) {
+      return authSession
+    }
+  } else {
+    actorUserId = authSession.user.id
+    actorRole = authSession.profile?.role || "admin"
   }
 
   try {
@@ -34,6 +41,16 @@ export async function POST(request: NextRequest): Promise<Response> {
     if (!result) {
       return NextResponse.json({ error: "Unable to evolve prices" }, { status: 404 })
     }
+
+    // Log the fantasy price evolution action
+    await logAdminAction({
+      actorUserId,
+      actorRole,
+      action: "fantasy_evolve_prices",
+      targetType: "fantasy_round",
+      targetId: `${body.season}-${body.fromRound}`,
+      metadataJson: { toRound: body.toRound, result },
+    })
 
     return NextResponse.json(result)
   } catch (error) {

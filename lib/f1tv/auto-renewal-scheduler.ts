@@ -2,9 +2,9 @@ import "server-only"
 
 import { getRedisClient } from "@/lib/cache/redis"
 import { getDb } from "@/lib/db/client"
-import { raceSessions, raceWeekends } from "@/lib/db/schema"
-import { loginWithEnvCredentials } from "@/lib/f1tv/credentials-login"
-import { and, asc, eq, gt, inArray, ne, or } from "drizzle-orm"
+import { raceSessions, raceWeekends, userProfiles } from "@/lib/db/schema"
+import { loginWithEnvCredentials, loginWithDbCredentials } from "@/lib/f1tv/credentials-login"
+import { and, asc, eq, gt, inArray, ne, or, isNotNull } from "drizzle-orm"
 
 const RENEWAL_LEAD_MS = 24 * 60 * 60 * 1000
 const RETRY_INTERVAL_MS = 60 * 60 * 1000
@@ -168,14 +168,94 @@ async function scheduleNextCheck(delayMs: number): Promise<void> {
   }, safeDelayMs)
 }
 
+function loginWithSubprocess(email: string, password: string): Promise<void> {
+  const fs = require("fs")
+  const path = require("path")
+  const { spawn } = require("child_process")
+
+  const cwd = typeof process !== "undefined" && typeof (process as any)["cwd"] === "function"
+    ? (process as any)["cwd"]()
+    : ""
+  const scriptPath = path.join(cwd, "scripts/f1tv-login.ts")
+  if (!fs.existsSync(scriptPath)) {
+    console.warn(`[f1tv/auto-renewal] scripts/f1tv-login.ts not found. Subprocess login skipped.`)
+    return Promise.reject(new Error("Headless login script not available on this container (delegate to worker)"))
+  }
+
+  return new Promise<void>((resolve, reject) => {
+    console.log(`[f1tv/auto-renewal] Spawning headless Playwright login process for ${email}...`)
+    
+    const child = spawn("npx", ["tsx", "scripts/f1tv-login.ts", "--headless"], {
+      shell: true,
+      env: {
+        ...process.env,
+        F1TV_EMAIL: email,
+        F1TV_PASSWORD: password,
+        HEADLESS: "true",
+        NPM_CONFIG_CACHE: "/tmp/.npm-cache",
+      },
+    })
+    
+    let stdout = ""
+    let stderr = ""
+    
+    child.stdout?.on("data", (data: any) => {
+      stdout += data.toString()
+    })
+    
+    child.stderr?.on("data", (data: any) => {
+      stderr += data.toString()
+    })
+    
+    child.on("close", (code: number) => {
+      if (code === 0) {
+        console.log("[f1tv/auto-renewal] Headless Playwright login subprocess completed successfully!")
+        resolve()
+      } else {
+        console.error(`[f1tv/auto-renewal] Subprocess failed with exit code ${code}`)
+        console.error(`Stdout: ${stdout}`)
+        console.error(`Stderr: ${stderr}`)
+        reject(new Error(`Playwright login subprocess failed: ${stderr || stdout}`))
+      }
+    })
+    
+    child.on("error", (err: any) => {
+      console.error("[f1tv/auto-renewal] Failed to start Playwright login subprocess:", err)
+      reject(err)
+    })
+  })
+}
+
 async function check(): Promise<void> {
   if (state.renewing) return
 
   state.lastCheck = new Date().toISOString()
   state.lastError = null
 
-  if (!process.env.F1TV_EMAIL || !process.env.F1TV_PASSWORD) {
-    state.lastError = "F1TV_EMAIL and F1TV_PASSWORD are not configured"
+  const hasEnv = Boolean(process.env.F1TV_EMAIL && process.env.F1TV_PASSWORD)
+  let hasDb = false
+  const db = getDb()
+  if (db) {
+    try {
+      const [adminProfile] = await db
+        .select({ id: userProfiles.userId })
+        .from(userProfiles)
+        .where(
+          and(
+            eq(userProfiles.role, "admin"),
+            isNotNull(userProfiles.f1tvEmail),
+            isNotNull(userProfiles.f1tvPassword)
+          )
+        )
+        .limit(1)
+      hasDb = !!adminProfile
+    } catch {
+      hasDb = false
+    }
+  }
+
+  if (!hasEnv && !hasDb) {
+    state.lastError = "No F1TV credentials configured (either in DB or env)"
     await scheduleNextCheck(RETRY_INTERVAL_MS)
     return
   }
@@ -206,7 +286,80 @@ async function check(): Promise<void> {
       `[f1tv/auto-renewal] Attempt ${attemptState.attemptCount + 1} for ${session.grandPrixName} ${session.sessionType}; scheduled at ${nextAttemptAt.toISOString()}`,
     )
 
-    const loginResult = await loginWithEnvCredentials()
+    let loginResult: any = null
+    let credentials: { email: string; password?: string } | null = null
+
+    // Load active DB admin credentials
+    if (db) {
+      try {
+        const [adminProfile] = await db
+          .select({
+            f1tvEmail: userProfiles.f1tvEmail,
+            f1tvPassword: userProfiles.f1tvPassword,
+          })
+          .from(userProfiles)
+          .where(
+            and(
+              eq(userProfiles.role, "admin"),
+              isNotNull(userProfiles.f1tvEmail),
+              isNotNull(userProfiles.f1tvPassword)
+            )
+          )
+          .limit(1)
+
+        if (adminProfile?.f1tvEmail && adminProfile?.f1tvPassword) {
+          const { decryptPassword } = await import("./crypto")
+          credentials = {
+            email: adminProfile.f1tvEmail,
+            password: decryptPassword(adminProfile.f1tvPassword),
+          }
+        }
+      } catch (dbErr) {
+        console.warn("[f1tv/auto-renewal] Failed to load credentials from DB:", dbErr)
+      }
+    }
+
+    if (!credentials && process.env.F1TV_EMAIL && process.env.F1TV_PASSWORD) {
+      console.log("[f1tv/auto-renewal] Falling back to env credentials")
+      credentials = {
+        email: process.env.F1TV_EMAIL,
+        password: process.env.F1TV_PASSWORD,
+      }
+    }
+
+    if (!credentials) {
+      throw new Error("No F1TV credentials configured")
+    }
+
+    try {
+      const { loginWithF1TVCredentials } = await import("./credentials-login")
+      loginResult = await loginWithF1TVCredentials(credentials.email, credentials.password!)
+    } catch (err: any) {
+      const errMsg = err?.message || String(err)
+      const isWafBlock = errMsg.includes("403") || errMsg.includes("Forbidden") || errMsg.includes("non-JSON (403)")
+      
+      if (isWafBlock) {
+        console.log("[f1tv/auto-renewal] Direct API login blocked by WAF. Attempting Playwright headless login subprocess...")
+        await loginWithSubprocess(credentials.email, credentials.password!)
+        
+        const { loadTokenFromRedis } = await import("./token-store")
+        const token = await loadTokenFromRedis()
+        if (!token) {
+          throw new Error("Subprocess completed but token was not found in Redis")
+        }
+        
+        const { setTokenDirectly } = await import("./auth")
+        setTokenDirectly(token)
+        
+        loginResult = {
+          rawCookieValue: token,
+          expiresAt: new Date(Date.now() + 13 * 24 * 60 * 60 * 1000), // Approx 13 days
+        }
+      } else {
+        throw err
+      }
+    }
+
     const { activateAndPersistToken } = await import("@/lib/f1tv/token-persistence")
     const { persistedEnv, persistedRedis } = await activateAndPersistToken(
       loginResult.rawCookieValue,
@@ -223,7 +376,7 @@ async function check(): Promise<void> {
     state.lastRenewedSessionId = session.id
 
     console.log(
-      `[f1tv/auto-renewal] Token renewed for session ${session.id}; expires ${loginResult.expiresAt.toISOString()}; persisted env=${persistedEnv} redis=${persistedRedis}`,
+      `[f1tv/auto-renewal] Token renewed for session ${session.id}; expires ${loginResult.expiresAt.toISOString() || "N/A"}; persisted env=${persistedEnv} redis=${persistedRedis}`,
     )
     await scheduleNextCheck(RETRY_INTERVAL_MS)
   } catch (err) {
@@ -247,6 +400,84 @@ async function check(): Promise<void> {
   }
 }
 
+let forceLoginTimer: ReturnType<typeof setInterval> | null = null
+
+function startForceLoginPolling() {
+  const fs = require("fs")
+  const path = require("path")
+  const cwd = typeof process !== "undefined" && typeof (process as any)["cwd"] === "function"
+    ? (process as any)["cwd"]()
+    : ""
+  const scriptPath = path.join(cwd, "scripts/f1tv-login.ts")
+  if (!fs.existsSync(scriptPath)) {
+    console.log("[f1tv/auto-renewal] scripts/f1tv-login.ts not found. Force login polling disabled on this container.")
+    return
+  }
+
+  if (forceLoginTimer) return
+
+  forceLoginTimer = setInterval(async () => {
+    try {
+      const redis = await getRedisClient()
+      if (!redis) return
+
+      const forceRequest = await redis.get("f1tv:force-login-request")
+      if (forceRequest === "true") {
+        console.log("[f1tv/auto-renewal] Force login request detected in Redis. Running Playwright subprocess...")
+        await redis.del("f1tv:force-login-request")
+
+        const db = getDb()
+        let credentials: { email: string; password?: string } | null = null
+
+        if (db) {
+          try {
+            const [adminProfile] = await db
+              .select({
+                f1tvEmail: userProfiles.f1tvEmail,
+                f1tvPassword: userProfiles.f1tvPassword,
+              })
+              .from(userProfiles)
+              .where(
+                and(
+                  eq(userProfiles.role, "admin"),
+                  isNotNull(userProfiles.f1tvEmail),
+                  isNotNull(userProfiles.f1tvPassword)
+                )
+              )
+              .limit(1)
+
+            if (adminProfile?.f1tvEmail && adminProfile?.f1tvPassword) {
+              const { decryptPassword } = await import("./crypto")
+              credentials = {
+                email: adminProfile.f1tvEmail,
+                password: decryptPassword(adminProfile.f1tvPassword),
+              }
+            }
+          } catch (dbErr) {
+            console.warn("[f1tv/auto-renewal] Force login failed to load credentials from DB:", dbErr)
+          }
+        }
+
+        if (!credentials && process.env.F1TV_EMAIL && process.env.F1TV_PASSWORD) {
+          credentials = {
+            email: process.env.F1TV_EMAIL,
+            password: process.env.F1TV_PASSWORD,
+          }
+        }
+
+        if (credentials) {
+          await loginWithSubprocess(credentials.email, credentials.password!)
+          console.log("[f1tv/auto-renewal] Force login subprocess completed successfully.")
+        } else {
+          console.warn("[f1tv/auto-renewal] Force login requested, but no credentials found.")
+        }
+      }
+    } catch (err) {
+      console.error("[f1tv/auto-renewal] Error in force login polling:", err)
+    }
+  }, 10000) // Poll every 10 seconds
+}
+
 export function startF1TVAutoRenewalScheduler(): void {
   if (state.running) return
 
@@ -260,12 +491,17 @@ export function startF1TVAutoRenewalScheduler(): void {
     console.error("[f1tv/auto-renewal] Initial check failed:", err)
   })
 
+  startForceLoginPolling()
 }
 
 export function stopF1TVAutoRenewalScheduler(): void {
   if (state.timer) {
     clearTimeout(state.timer)
     state.timer = null
+  }
+  if (forceLoginTimer) {
+    clearInterval(forceLoginTimer)
+    forceLoginTimer = null
   }
   state.running = false
   console.log("[f1tv/auto-renewal] Stopped")

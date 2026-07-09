@@ -245,5 +245,20 @@
       "sectionTitle": "New Visualizations — In Validation",
       "rawDataDescription": "Raw API data not yet exposed on the main pages: LapSeries · WeatherDataSeries · Segments · Speeds I1/I2/FL/ST · ChampionshipPrediction · ContentStreams · CarData.z"
     }
+  },
+  "auth": {
+    "signInTitle": "Sign In",
+    "signInSubtitle": "Access your administrative dashboard or fantasy account",
+    "emailLabel": "Email Address",
+    "passwordLabel": "Password",
+    "signInButton": "Sign In",
+    "signingInButton": "Signing In...",
+    "signInError": "Invalid email or password",
+    "accountTitle": "My Account",
+    "accountSubtitle": "Manage your profile and session details",
+    "logoutButton": "Sign Out",
+    "roleLabel": "Role",
+    "nameLabel": "Name",
+    "createdAtLabel": "Member Since"
   }
 }

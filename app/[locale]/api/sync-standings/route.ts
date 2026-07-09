@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import { fetchDriverStandings, fetchConstructorStandings, fetchRaceResults } from "@/lib/jolpica/client"
 import { syncDriverStandings, syncConstructorStandings, syncPodiumsFromResults } from "@/lib/db/standings"
+import { requireAdmin } from "@/lib/auth/guards"
 
 export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest): Promise<Response> {
+  const session = await requireAdmin()
+  if (session instanceof Response) return session
+
   try {
     const body = (await request.json().catch(() => ({}))) as { season?: number; round?: number }
     const season = body.season ?? new Date().getFullYear()

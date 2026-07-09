@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { File as NodeFile } from "node:buffer"
 import OpenAI, { APIError } from "openai"
+import { requireAdmin } from "@/lib/auth/guards"
+import { logAdminAction } from "@/lib/db/audit"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -174,6 +176,9 @@ async function fetchAudio(url: URL): Promise<Response> {
 }
 
 export async function POST(request: NextRequest): Promise<Response> {
+  const session = await requireAdmin()
+  if (session instanceof Response) return session
+
   try {
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
@@ -251,6 +256,15 @@ export async function POST(request: NextRequest): Promise<Response> {
         { status },
       )
     }
+
+    // Log transcription request
+    await logAdminAction({
+      actorUserId: session.user.id,
+      actorRole: session.profile?.role || "admin",
+      action: "transcribe_audio",
+      targetType: "audio",
+      metadataJson: { audioUrl: (body as { audioUrl: string }).audioUrl },
+    })
 
     return NextResponse.json({
       success: true,

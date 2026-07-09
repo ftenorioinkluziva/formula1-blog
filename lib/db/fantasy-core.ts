@@ -151,7 +151,7 @@ export async function getFantasyContext(season: number, round: number): Promise<
   }
 }
 
-export async function getFantasyProfileBySessionKey(sessionKey: string) {
+export async function getFantasyProfileByUserId(userId: string) {
   const db = getDb()
 
   if (!db) {
@@ -161,11 +161,12 @@ export async function getFantasyProfileBySessionKey(sessionKey: string) {
   const [profile] = await db
     .select()
     .from(fantasyProfiles)
-    .where(eq(fantasyProfiles.sessionKey, sessionKey))
+    .where(eq(fantasyProfiles.userId, userId))
     .limit(1)
 
   return profile ?? null
 }
+
 
 export async function getFantasyEntry(profileId: number, seasonId: number, weekendId: number) {
   const db = getDb()

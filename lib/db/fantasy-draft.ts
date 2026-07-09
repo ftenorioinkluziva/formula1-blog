@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray, lt, sql } from "drizzle-orm"
 import { getDb } from "@/lib/db/client"
-import { buildBudgetSnapshot, getCurrentAssetPricesMap, getFantasyContext, getFantasyEntry, getFantasyProfileBySessionKey, type FantasyBudgetSnapshot } from "@/lib/db/fantasy-core"
+import { buildBudgetSnapshot, getCurrentAssetPricesMap, getFantasyContext, getFantasyEntry, getFantasyProfileByUserId, type FantasyBudgetSnapshot } from "@/lib/db/fantasy-core"
 import {
   drivers,
   fantasyAssets,
@@ -54,6 +54,7 @@ export interface FantasyReviewState {
   lineup: FantasyLineupState
   budget: FantasyBudgetSnapshot
   eligibility: FantasyEligibilityState
+  entryStatus: string
   predictions: {
     exists: boolean
     isComplete: boolean
@@ -166,7 +167,7 @@ async function getLineupRows(entryId: number) {
     .where(eq(fantasyRoundHoldings.entryId, entryId))
 }
 
-export async function ensureFantasyDraft(season: number, round: number, sessionKey: string, displayName?: string) {
+export async function ensureFantasyDraft(season: number, round: number, userId: string, displayName?: string) {
   const db = getDb()
   const context = await getFantasyContext(season, round)
 
@@ -178,7 +179,7 @@ export async function ensureFantasyDraft(season: number, round: number, sessionK
     let [profile] = await tx
       .select()
       .from(fantasyProfiles)
-      .where(eq(fantasyProfiles.sessionKey, sessionKey))
+      .where(eq(fantasyProfiles.userId, userId))
       .limit(1)
 
     if (!profile) {
@@ -186,7 +187,7 @@ export async function ensureFantasyDraft(season: number, round: number, sessionK
         .insert(fantasyProfiles)
         .values({
           displayName: displayName?.trim() || "Fantasy Player",
-          sessionKey,
+          userId,
         })
         .returning()
     }
@@ -445,10 +446,10 @@ export function getFantasyEligibilityState(
 export async function getFantasyReviewState(
   season: number,
   round: number,
-  sessionKey: string,
+  userId: string,
 ): Promise<FantasyReviewState | null> {
   const context = await getFantasyContext(season, round)
-  const profile = await getFantasyProfileBySessionKey(sessionKey)
+  const profile = await getFantasyProfileByUserId(userId)
 
   if (!context || !profile) {
     return null
@@ -481,6 +482,7 @@ export async function getFantasyReviewState(
     lineup,
     budget,
     eligibility,
+    entryStatus: entry.status,
     predictions: {
       exists: Boolean(predictions),
       isComplete: predictionsComplete,
@@ -602,12 +604,12 @@ async function validateRosterConstraints(
 export async function upsertFantasyHolding(
   season: number,
   round: number,
-  sessionKey: string,
+  userId: string,
   slotType: SlotType,
   assetId: number,
 ) {
   const db = getDb()
-  const ensured = await ensureFantasyDraft(season, round, sessionKey)
+  const ensured = await ensureFantasyDraft(season, round, userId)
 
   if (!db || !ensured) {
     return null
@@ -724,13 +726,13 @@ export async function upsertFantasyHolding(
 export async function removeFantasyHolding(
   season: number,
   round: number,
-  sessionKey: string,
+  userId: string,
   slotType: SlotType,
 ): Promise<{ lineup: FantasyLineupState; budget: FantasyBudgetSnapshot; eligibility: FantasyEligibilityState } | null> {
   const context = await getFantasyContext(season, round)
   if (!context) return null
 
-  const profile = await getFantasyProfileBySessionKey(sessionKey)
+  const profile = await getFantasyProfileByUserId(userId)
   if (!profile) return null
 
   const entry = await getFantasyEntry(profile.id, context.fantasySeasonId, context.weekendId)
@@ -862,7 +864,7 @@ function mapScoreItemLabel(scoreBlock: string, scoreType: string): string {
 export async function getFantasyPredictionOptions(
   season: number,
   round: number,
-  sessionKey: string,
+  userId: string,
 ): Promise<FantasyPredictionOptionsState | null> {
   const db = getDb()
   const context = await getFantasyContext(season, round)
@@ -871,7 +873,7 @@ export async function getFantasyPredictionOptions(
     return null
   }
 
-  const profile = await getFantasyProfileBySessionKey(sessionKey)
+  const profile = await getFantasyProfileByUserId(userId)
 
   if (!profile) {
     return null
@@ -916,11 +918,11 @@ export async function getFantasyPredictionOptions(
 export async function saveFantasyPredictions(
   season: number,
   round: number,
-  sessionKey: string,
+  userId: string,
   predictions: FantasyPredictionsInput,
 ) {
   const db = getDb()
-  const ensured = await ensureFantasyDraft(season, round, sessionKey)
+  const ensured = await ensureFantasyDraft(season, round, userId)
 
   if (!db || !ensured) {
     return null
@@ -963,10 +965,10 @@ export async function saveFantasyPredictions(
   }
 }
 
-export async function lockFantasyEntry(season: number, round: number, sessionKey: string) {
+export async function lockFantasyEntry(season: number, round: number, userId: string) {
   const db = getDb()
-  const review = await getFantasyReviewState(season, round, sessionKey)
-  const profile = await getFantasyProfileBySessionKey(sessionKey)
+  const review = await getFantasyReviewState(season, round, userId)
+  const profile = await getFantasyProfileByUserId(userId)
   const context = await getFantasyContext(season, round)
 
   if (!db || !review || !profile || !context) {
@@ -1025,10 +1027,10 @@ export async function lockFantasyEntry(season: number, round: number, sessionKey
 export async function getFantasyRoundResult(
   season: number,
   round: number,
-  sessionKey: string,
+  userId: string,
 ): Promise<FantasyRoundResultState | null> {
   const db = getDb()
-  const profile = await getFantasyProfileBySessionKey(sessionKey)
+  const profile = await getFantasyProfileByUserId(userId)
   const context = await getFantasyContext(season, round)
 
   if (!db || !profile || !context) {

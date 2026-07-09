@@ -64,7 +64,8 @@ export function FantasyDraftSection({
 }: Props) {
   const t = useTranslations("fantasy.draft")
   const budgetPct = review ? Math.max(0, Math.min(100, (review.budget.spent / review.budget.total) * 100)) : 0
-  const lockClosed = bootstrap?.lockStatus === "locked" || bootstrap?.lockStatus === "finished"
+  const entryLocked = review?.entryStatus === "locked" || bootstrap?.draftStatus === "locked"
+  const reviewIssues = entryLocked ? ["entry_locked"] : (review?.eligibility.issues ?? [])
 
   const selectedDriver1Id = selectedFantasyAssetIdForSlot(review, "driver_1")
   const selectedDriver2Id = selectedFantasyAssetIdForSlot(review, "driver_2")
@@ -110,45 +111,6 @@ export function FantasyDraftSection({
                   data-testid="fantasy-display-name-input"
                 />
               </label>
-            </div>
-
-            {/* Account Recovery Key section */}
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 text-xs text-zinc-400">
-              <div className="space-y-1">
-                <span className="font-semibold text-zinc-300">{t("recoveryKey")}</span>
-                <code className="block font-mono text-[10px] text-zinc-500 select-all">{bootstrap?.profile?.sessionKey || "..."}</code>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  type="button"
-                  onClick={() => {
-                    if (bootstrap?.profile?.sessionKey) {
-                      navigator.clipboard.writeText(bootstrap.profile.sessionKey)
-                      alert(t("copysuccess"))
-                    }
-                  }}
-                  className="h-8 border-zinc-850 bg-zinc-900/60 hover:bg-zinc-800 text-zinc-300"
-                >
-                  {t("copyKey")}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  type="button"
-                  onClick={() => {
-                    const key = prompt(t("recoveryKey"))?.trim()
-                    if (key) {
-                      window.localStorage.setItem("fantasy-session-key", key)
-                      window.location.reload()
-                    }
-                  }}
-                  className="h-8 border-zinc-850 bg-zinc-900/60 hover:bg-zinc-800 text-zinc-300"
-                >
-                  {t("importKey")}
-                </Button>
-              </div>
             </div>
 
             {/* Transfer Limits and Constructor Hold */}
@@ -216,8 +178,8 @@ export function FantasyDraftSection({
             <div className="space-y-2">
               <div className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">{t("issues")}</div>
               <div className="flex flex-wrap gap-2">
-                {review?.eligibility.issues.length ? (
-                  review.eligibility.issues.map((issue) => (
+                {reviewIssues.length ? (
+                  reviewIssues.map((issue) => (
                     <Badge key={issue} variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-100">
                       {fantasyIssueLabel(issue)}
                     </Badge>
@@ -228,7 +190,7 @@ export function FantasyDraftSection({
               </div>
             </div>
             <div className="flex flex-wrap gap-3">
-              <Button className="w-full sm:w-auto" onClick={onLock} disabled={busy !== null || !review?.eligibility.isValid} data-testid="fantasy-lock-button">
+              <Button className="w-full sm:w-auto" onClick={onLock} disabled={busy !== null || entryLocked || !review?.eligibility.isValid} data-testid="fantasy-lock-button">
                 {busy === "lock" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 {t("lockLineup")}
               </Button>

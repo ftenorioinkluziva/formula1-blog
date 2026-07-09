@@ -1,18 +1,25 @@
 import { NextRequest, NextResponse } from "next/server"
 import { runFantasyPostRound } from "@/lib/fantasy/post-round-pipeline"
+import { requireAdmin } from "@/lib/auth/guards"
+import { logAdminAction } from "@/lib/db/audit"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 120
 
 export async function POST(request: NextRequest): Promise<Response> {
-  const adminSecret = process.env.ADMIN_SECRET
-  if (!adminSecret) {
-    return NextResponse.json({ error: "Unauthorized: ADMIN_SECRET not configured on server" }, { status: 401 })
-  }
+  let actorUserId = "system:admin-secret"
+  let actorRole = "admin"
 
-  const headerSecret = request.headers.get("x-admin-secret")
-  if (headerSecret !== adminSecret) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const authSession = await requireAdmin()
+  if (authSession instanceof Response) {
+    const adminSecret = process.env.ADMIN_SECRET
+    const headerSecret = request.headers.get("x-admin-secret")
+    if (!adminSecret || headerSecret !== adminSecret) {
+      return authSession
+    }
+  } else {
+    actorUserId = authSession.user.id
+    actorRole = authSession.profile?.role || "admin"
   }
 
   try {
@@ -34,6 +41,16 @@ export async function POST(request: NextRequest): Promise<Response> {
       requireRaceResults: true,
       includeScoring: true,
       evolvePrices: true,
+    })
+
+    // Log the fantasy post-round action
+    await logAdminAction({
+      actorUserId,
+      actorRole,
+      action: "fantasy_post_round",
+      targetType: "fantasy_round",
+      targetId: `${season}-${round}`,
+      metadataJson: result as any,
     })
 
     return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } })

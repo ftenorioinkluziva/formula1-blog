@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ensureAuthenticated, getDecodedToken } from '@/lib/f1tv/auth'
+import { requireAdmin, requireUser } from '@/lib/auth/guards'
 import {
   decodeTokenPayload,
   loginWithEnvCredentials,
@@ -24,6 +25,9 @@ function authError(err: unknown, status = 500) {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await requireAdmin()
+  if (session instanceof Response) return session
+
   let body: Record<string, string>
   try {
     body = await request.json()
@@ -99,6 +103,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
+  const session = await requireUser()
+  if (session instanceof Response) return session
+
   let authenticated = false
   try {
     await ensureAuthenticated()

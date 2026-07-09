@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray } from "drizzle-orm"
 import { getDb } from "@/lib/db/client"
-import { getCurrentAssetPricesMap, getFantasyContext, getFantasyEntry, getFantasyProfileBySessionKey, type FantasyBudgetSnapshot } from "@/lib/db/fantasy-core"
+import { getCurrentAssetPricesMap, getFantasyContext, getFantasyEntry, getFantasyProfileByUserId, type FantasyBudgetSnapshot } from "@/lib/db/fantasy-core"
 import {
   drivers,
   fantasyAssets,
@@ -93,7 +93,7 @@ async function getSelectedHoldingsMap(entryId: number | null): Promise<Map<strin
 export async function getFantasyDriverAssets(
   season: number,
   round: number,
-  sessionKey?: string,
+  userId?: string,
 ): Promise<FantasyAssetListResponse | null> {
   const db = getDb()
   const context = await getFantasyContext(season, round)
@@ -102,7 +102,7 @@ export async function getFantasyDriverAssets(
     return null
   }
 
-  const profile = sessionKey ? await getFantasyProfileBySessionKey(sessionKey) : null
+  const profile = userId ? await getFantasyProfileByUserId(userId) : null
   const entry = profile ? await getFantasyEntry(profile.id, context.fantasySeasonId, context.weekendId) : null
   const holdingsBySlot = await getSelectedHoldingsMap(entry?.id ?? null)
 
@@ -155,7 +155,7 @@ export async function getFantasyDriverAssets(
 export async function getFantasyTeamAssets(
   season: number,
   round: number,
-  sessionKey?: string,
+  userId?: string,
 ): Promise<FantasyAssetListResponse | null> {
   const db = getDb()
   const context = await getFantasyContext(season, round)
@@ -164,7 +164,7 @@ export async function getFantasyTeamAssets(
     return null
   }
 
-  const profile = sessionKey ? await getFantasyProfileBySessionKey(sessionKey) : null
+  const profile = userId ? await getFantasyProfileByUserId(userId) : null
   const entry = profile ? await getFantasyEntry(profile.id, context.fantasySeasonId, context.weekendId) : null
   const holdingsBySlot = await getSelectedHoldingsMap(entry?.id ?? null)
 
@@ -206,7 +206,7 @@ export async function getFantasyTeamAssets(
 export async function getFantasyPitWallLeadAssets(
   season: number,
   round: number,
-  sessionKey: string,
+  userId: string,
 ): Promise<{ items: FantasyAssetListItem[]; selectedAssetIds: number[]; budget: FantasyBudgetSnapshot | null } | null> {
   const db = getDb()
   const context = await getFantasyContext(season, round)
@@ -215,7 +215,7 @@ export async function getFantasyPitWallLeadAssets(
     return null
   }
 
-  const profile = await getFantasyProfileBySessionKey(sessionKey)
+  const profile = await getFantasyProfileByUserId(userId)
 
   if (!profile) {
     return null

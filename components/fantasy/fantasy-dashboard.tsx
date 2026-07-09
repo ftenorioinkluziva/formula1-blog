@@ -13,7 +13,6 @@ import {
   lockFantasyDraft,
   removeFantasyLineupSlot,
   saveFantasyPredictions,
-  triggerFantasyScore,
   updateFantasyLineup,
   updateFantasyProfile,
 } from "@/lib/fantasy/client"
@@ -39,23 +38,14 @@ interface Props {
   locale: string
   weekends: RaceWeekendOption[]
   initialRound: number
+  initialDisplayName?: string
 }
 
 const SEASON = 2026
-const SESSION_KEY_STORAGE = "fantasy-session-key"
 
-function buildFallbackSessionKey(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return `fantasy-${crypto.randomUUID()}`
-  }
-
-  return `fantasy-${Date.now()}`
-}
-
-export function FantasyDashboard({ locale, weekends, initialRound }: Props) {
+export function FantasyDashboard({ locale, weekends, initialRound, initialDisplayName }: Props) {
   const [round, setRound] = useState(initialRound)
-  const [sessionKey, setSessionKey] = useState("")
-  const [displayName, setDisplayName] = useState("Garage Owner")
+  const [displayName, setDisplayName] = useState(initialDisplayName || "Garage Owner")
   const [bootstrap, setBootstrap] = useState<FantasyBootstrapResponse | null>(null)
   const [review, setReview] = useState<FantasyReviewResponse | null>(null)
   const [predictionOptions, setPredictionOptions] = useState<FantasyPredictionOptionsResponse | null>(null)
@@ -81,10 +71,6 @@ export function FantasyDashboard({ locale, weekends, initialRound }: Props) {
   }, [bootstrap?.profile?.displayName])
 
   useEffect(() => {
-    if (!sessionKey) {
-      return
-    }
-
     let cancelled = false
     const timer = window.setTimeout(() => {
       async function loadRound(): Promise<void> {
@@ -93,7 +79,7 @@ export function FantasyDashboard({ locale, weekends, initialRound }: Props) {
         setScoreMessage(null)
 
         try {
-          const bootstrapResponse = await getFantasyBootstrap(locale, SEASON, round, sessionKey)
+          const bootstrapResponse = await getFantasyBootstrap(locale, SEASON, round)
           if (cancelled) return
           setBootstrap(bootstrapResponse)
 
@@ -101,7 +87,7 @@ export function FantasyDashboard({ locale, weekends, initialRound }: Props) {
           const lockIsOpen = bootstrapResponse.lockStatus === "open" || bootstrapResponse.lockStatus === "closing_soon"
 
           if (!bootstrapResponse.hasExistingDraft && lockIsOpen) {
-            const draftResult = await createFantasyDraft(locale, SEASON, round, sessionKey, displayNameRef.current)
+            const draftResult = await createFantasyDraft(locale, SEASON, round, displayNameRef.current)
             if (draftResult?.profile) {
               currentBootstrap = {
                 ...bootstrapResponse,
@@ -116,13 +102,13 @@ export function FantasyDashboard({ locale, weekends, initialRound }: Props) {
           const hasEntry = currentBootstrap.hasExistingDraft || lockIsOpen
 
           const [reviewResponse, driversResponse, teamsResponse, engineersResponse, predictionsResponse, resultResponse, leaderboardResponse] = await Promise.all([
-            hasEntry ? getFantasyReview(locale, SEASON, round, sessionKey).catch(() => null) : Promise.resolve(null),
-            getFantasyAssets(locale, SEASON, round, "driver", sessionKey).catch(() => null),
-            getFantasyAssets(locale, SEASON, round, "team", sessionKey).catch(() => null),
-            hasEntry ? getFantasyPitWallLeads(locale, SEASON, round, sessionKey).catch(() => null) : Promise.resolve(null),
-            hasEntry ? getFantasyPredictionOptions(locale, SEASON, round, sessionKey).catch(() => null) : Promise.resolve(null),
-            hasEntry ? getFantasyResult(locale, SEASON, round, sessionKey).catch(() => null) : Promise.resolve(null),
-            getFantasyLeaderboard(locale, SEASON, round, sessionKey).catch(() => null),
+            hasEntry ? getFantasyReview(locale, SEASON, round).catch(() => null) : Promise.resolve(null),
+            getFantasyAssets(locale, SEASON, round, "driver").catch(() => null),
+            getFantasyAssets(locale, SEASON, round, "team").catch(() => null),
+            hasEntry ? getFantasyPitWallLeads(locale, SEASON, round).catch(() => null) : Promise.resolve(null),
+            hasEntry ? getFantasyPredictionOptions(locale, SEASON, round).catch(() => null) : Promise.resolve(null),
+            hasEntry ? getFantasyResult(locale, SEASON, round).catch(() => null) : Promise.resolve(null),
+            getFantasyLeaderboard(locale, SEASON, round).catch(() => null),
           ])
 
           if (cancelled) return
@@ -153,22 +139,20 @@ export function FantasyDashboard({ locale, weekends, initialRound }: Props) {
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [locale, round, sessionKey])
+  }, [locale, round])
 
   async function refreshRound(): Promise<void> {
-    if (!sessionKey) return
-
-    const bootstrapResponse = await getFantasyBootstrap(locale, SEASON, round, sessionKey)
+    const bootstrapResponse = await getFantasyBootstrap(locale, SEASON, round)
     const hasEntry = bootstrapResponse.hasExistingDraft || bootstrapResponse.lockStatus === "open" || bootstrapResponse.lockStatus === "closing_soon"
 
     const [reviewResponse, driversResponse, teamsResponse, engineersResponse, predictionsResponse, resultResponse, leaderboardResponse] = await Promise.all([
-      hasEntry ? getFantasyReview(locale, SEASON, round, sessionKey).catch(() => null) : Promise.resolve(null),
-      getFantasyAssets(locale, SEASON, round, "driver", sessionKey).catch(() => null),
-      getFantasyAssets(locale, SEASON, round, "team", sessionKey).catch(() => null),
-      hasEntry ? getFantasyPitWallLeads(locale, SEASON, round, sessionKey).catch(() => null) : Promise.resolve(null),
-      hasEntry ? getFantasyPredictionOptions(locale, SEASON, round, sessionKey).catch(() => null) : Promise.resolve(null),
-      hasEntry ? getFantasyResult(locale, SEASON, round, sessionKey).catch(() => null) : Promise.resolve(null),
-      getFantasyLeaderboard(locale, SEASON, round, sessionKey).catch(() => null),
+      hasEntry ? getFantasyReview(locale, SEASON, round).catch(() => null) : Promise.resolve(null),
+      getFantasyAssets(locale, SEASON, round, "driver").catch(() => null),
+      getFantasyAssets(locale, SEASON, round, "team").catch(() => null),
+      hasEntry ? getFantasyPitWallLeads(locale, SEASON, round).catch(() => null) : Promise.resolve(null),
+      hasEntry ? getFantasyPredictionOptions(locale, SEASON, round).catch(() => null) : Promise.resolve(null),
+      hasEntry ? getFantasyResult(locale, SEASON, round).catch(() => null) : Promise.resolve(null),
+      getFantasyLeaderboard(locale, SEASON, round).catch(() => null),
     ])
 
     setBootstrap(bootstrapResponse)
@@ -183,8 +167,6 @@ export function FantasyDashboard({ locale, weekends, initialRound }: Props) {
   }
 
   async function handleSelect(slot: FantasySlotType, assetId: number): Promise<void> {
-    if (!sessionKey) return
-
     const lineup = review?.lineup
     const isDeselect =
       (slot === "driver_1" && lineup?.driver1?.assetId === assetId) ||
@@ -197,9 +179,9 @@ export function FantasyDashboard({ locale, weekends, initialRound }: Props) {
 
     try {
       if (isDeselect) {
-        await removeFantasyLineupSlot(locale, SEASON, round, sessionKey, slot)
+        await removeFantasyLineupSlot(locale, SEASON, round, slot)
       } else {
-        await updateFantasyLineup(locale, SEASON, round, sessionKey, slot, assetId)
+        await updateFantasyLineup(locale, SEASON, round, slot, assetId)
       }
       await refreshRound()
     } catch (selectionError) {
@@ -210,13 +192,13 @@ export function FantasyDashboard({ locale, weekends, initialRound }: Props) {
   }
 
   async function handleSavePredictions(): Promise<void> {
-    if (!sessionKey || !predictions) return
+    if (!predictions) return
 
     setBusy("predictions")
     setError(null)
 
     try {
-      await saveFantasyPredictions(locale, SEASON, round, sessionKey, predictions)
+      await saveFantasyPredictions(locale, SEASON, round, predictions)
       await refreshRound()
     } catch (predictionError) {
       setError(predictionError instanceof Error ? predictionError.message : "failed_to_save_predictions")
@@ -226,13 +208,11 @@ export function FantasyDashboard({ locale, weekends, initialRound }: Props) {
   }
 
   async function handleLock(): Promise<void> {
-    if (!sessionKey) return
-
     setBusy("lock")
     setError(null)
 
     try {
-      await lockFantasyDraft(locale, SEASON, round, sessionKey)
+      await lockFantasyDraft(locale, SEASON, round)
       await refreshRound()
     } catch (lockError) {
       setError(lockError instanceof Error ? lockError.message : "failed_to_lock_entry")
@@ -242,27 +222,16 @@ export function FantasyDashboard({ locale, weekends, initialRound }: Props) {
   }
 
   async function handleSaveDisplayName(newName: string): Promise<void> {
-    if (!sessionKey || !newName.trim()) return
+    if (!newName.trim()) return
     try {
-      await updateFantasyProfile(locale, sessionKey, newName.trim())
+      await updateFantasyProfile(locale, newName.trim())
     } catch (saveError) {
       console.error("Failed to persist display name:", saveError)
     }
   }
 
-  // Restore session key loader in a separate mount effect
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      const saved = window.localStorage.getItem(SESSION_KEY_STORAGE) ?? buildFallbackSessionKey()
-      window.localStorage.setItem(SESSION_KEY_STORAGE, saved)
-      setSessionKey(saved)
-    }, 0)
-
-    return () => window.clearTimeout(timer)
-  }, [])
-
   return (
-    <div className="space-y-6" data-testid="fantasy-dashboard" data-round={round} data-session-key={sessionKey || undefined}>
+    <div className="space-y-6" data-testid="fantasy-dashboard" data-round={round}>
       <FantasyGameplayStepper bootstrap={bootstrap} review={review} />
 
       <FantasyDraftSection
@@ -296,7 +265,7 @@ export function FantasyDashboard({ locale, weekends, initialRound }: Props) {
         <FantasyResultCard result={result} lockStatus={bootstrap?.lockStatus ?? null} />
       </section>
 
-      <FantasyLeaderboardCard leaderboard={leaderboard} weekends={weekends} currentRound={round} sessionKey={sessionKey} locale={locale} />
+      <FantasyLeaderboardCard leaderboard={leaderboard} weekends={weekends} currentRound={round} locale={locale} />
     </div>
   )
 }

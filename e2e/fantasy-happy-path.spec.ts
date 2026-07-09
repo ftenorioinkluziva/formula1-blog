@@ -7,23 +7,26 @@ import {
   type PredictionOptionsResponse,
   chooseCheapestAssets,
   clickAndWaitForMutation,
+  closeTestDatabase,
   createDraft,
   fetchJson,
   fillPredictions,
   findOpenRound,
-  seedSessionKey,
+  registerAndLogin,
 } from "./fantasy-test-utils"
+
+test.afterAll(async () => {
+  await closeTestDatabase()
+})
 
 test("completa o fluxo feliz da fantasy para uma rodada aberta", async ({ page, request }) => {
   // #given
-  const sessionKey = `fantasy-e2e-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
-  const round = await findOpenRound(request, sessionKey)
+  const { cookieHeader } = await registerAndLogin(page, request)
+  const round = await findOpenRound(request, cookieHeader)
 
   test.skip(round === null, "Nenhuma rodada fantasy aberta foi encontrada para o teste E2E.")
 
-  await createDraft(request, round, sessionKey)
-
-  await seedSessionKey(page, sessionKey)
+  await createDraft(request, round, cookieHeader)
 
   // #when
   await page.goto(`/${LOCALE}/fantasy?round=${round}`)
@@ -38,9 +41,9 @@ test("completa o fluxo feliz da fantasy para uma rodada aberta", async ({ page, 
   const lockButton = page.getByTestId("fantasy-lock-button")
 
   const [driversPayload, teamsPayload, predictionsPayload] = await Promise.all([
-    fetchJson<AssetListResponse>(request, `/${LOCALE}/api/fantasy/assets?season=${SEASON}&round=${round}&type=driver&sessionKey=${sessionKey}`),
-    fetchJson<AssetListResponse>(request, `/${LOCALE}/api/fantasy/assets?season=${SEASON}&round=${round}&type=team&sessionKey=${sessionKey}`),
-    fetchJson<PredictionOptionsResponse>(request, `/${LOCALE}/api/fantasy/draft/predictions?season=${SEASON}&round=${round}&sessionKey=${sessionKey}`),
+    fetchJson<AssetListResponse>(request, `/${LOCALE}/api/fantasy/assets?season=${SEASON}&round=${round}&type=driver`, cookieHeader),
+    fetchJson<AssetListResponse>(request, `/${LOCALE}/api/fantasy/assets?season=${SEASON}&round=${round}&type=team`, cookieHeader),
+    fetchJson<PredictionOptionsResponse>(request, `/${LOCALE}/api/fantasy/draft/predictions?season=${SEASON}&round=${round}`, cookieHeader),
   ])
 
   const [driverOne, driverTwo] = chooseCheapestAssets(driversPayload.items, 2)
@@ -55,7 +58,7 @@ test("completa o fluxo feliz da fantasy para uma rodada aberta", async ({ page, 
   await expect(page.getByTestId(`fantasy-select-team-${team.assetId}`)).toBeVisible()
   await clickAndWaitForMutation(page, page.getByTestId(`fantasy-select-team-${team.assetId}`), "/api/fantasy/draft/lineup", savePredictionsButton)
 
-  const engineersPayload = await fetchJson<PitWallLeadsResponse>(request, `/${LOCALE}/api/fantasy/engineers?season=${SEASON}&round=${round}&sessionKey=${sessionKey}`)
+  const engineersPayload = await fetchJson<PitWallLeadsResponse>(request, `/${LOCALE}/api/fantasy/engineers?season=${SEASON}&round=${round}`, cookieHeader)
   const [engineer] = chooseCheapestAssets(engineersPayload.items, 1)
 
   await expect(page.getByTestId(`fantasy-select-engineer-${engineer.assetId}`)).toBeVisible()

@@ -4,6 +4,8 @@ import {
   createAdminGalleryImage,
   parseGalleryImageInput,
 } from "@/lib/db/multimedia-admin"
+import { requireAnyRole } from "@/lib/auth/guards"
+import { logAdminAction } from "@/lib/db/audit"
 
 export const dynamic = "force-dynamic"
 
@@ -27,11 +29,25 @@ export async function POST(
   req: NextRequest,
   context: { params: Promise<{ id: string }> },
 ): Promise<Response> {
+  const session = await requireAnyRole(["editor", "admin"])
+  if (session instanceof Response) return session
+
   try {
     const { id: idParam } = await context.params
     const galleryId = parseId(idParam)
     const input = parseGalleryImageInput(await req.json())
     const id = await createAdminGalleryImage(galleryId, input)
+
+    // Log the gallery image creation
+    await logAdminAction({
+      actorUserId: session.user.id,
+      actorRole: session.profile?.role || "user",
+      action: "add_gallery_image",
+      targetType: "gallery",
+      targetId: idParam,
+      metadataJson: { imageId: id, imageUrl: input.imageUrl },
+    })
+
     return NextResponse.json({ ok: true, id }, { status: 201 })
   } catch (error) {
     return handleError(error)

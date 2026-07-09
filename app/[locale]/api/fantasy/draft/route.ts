@@ -1,26 +1,29 @@
 import { NextRequest, NextResponse } from "next/server"
 import { ensureFantasyDraft } from "@/lib/db/fantasy-draft"
+import { requireUser } from "@/lib/auth/guards"
 
 export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest): Promise<Response> {
+  const session = await requireUser()
+  if (session instanceof Response) return session
+  const userId = session.user.id
+
   try {
     const body = (await request.json().catch(() => ({}))) as {
       season?: number
       round?: number
-      sessionKey?: string
       displayName?: string
     }
 
     const season = body.season
     const round = body.round
-    const sessionKey = body.sessionKey?.trim()
 
-    if (!season || !round || !sessionKey) {
-      return NextResponse.json({ error: "season, round and sessionKey required" }, { status: 400 })
+    if (!season || !round) {
+      return NextResponse.json({ error: "season and round required" }, { status: 400 })
     }
 
-    const result = await ensureFantasyDraft(season, round, sessionKey, body.displayName)
+    const result = await ensureFantasyDraft(season, round, userId, body.displayName || session.user.name || undefined)
 
     if (!result) {
       return NextResponse.json({ error: "Unable to create fantasy draft" }, { status: 404 })
@@ -30,7 +33,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       profile: {
         id: result.profile.id,
         displayName: result.profile.displayName,
-        sessionKey: result.profile.sessionKey,
+        userId: result.profile.userId,
       },
       entry: result.entry,
       draftStatus: result.entry.status,
