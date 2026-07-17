@@ -95,7 +95,7 @@ export function HeroSection() {
             <span className="mb-3 inline-flex bg-primary px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-primary-foreground sm:text-xs">
               {featured.category}
             </span>
-            <h1 className="max-w-3xl text-3xl font-black uppercase leading-[0.98] tracking-tight text-player-foreground sm:text-4xl md:text-5xl lg:text-[3.4rem]">
+            <h1 className="max-w-2xl text-3xl font-black uppercase leading-[1.02] tracking-tight text-player-foreground sm:text-4xl md:text-4xl lg:text-[2.65rem] xl:text-[3rem]">
               {featured.title}
             </h1>
 

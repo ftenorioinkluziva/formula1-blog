@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
+import { Link } from "@/lib/i18n/routing"
 import Image from "next/image"
 import ReactMarkdown from "react-markdown"
 import {
@@ -91,39 +91,39 @@ export function NewsArticleDetail({ article, locale }: NewsArticleDetailProps) {
   const articleUrl = `https://f1paddockinsider.com/${locale}/news/${article.id}`
 
   return (
-    <main className="min-h-screen bg-background pt-16">
-      {/* Hero image */}
-      <div className="relative w-full h-[42vh] min-h-[280px] max-h-[60vh] overflow-hidden">
-        <Image
-          src={article.image ?? "/placeholder.svg?height=720&width=1280"}
-          alt={article.title}
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover"
-        />
-        <div className="absolute inset-0 bg-linear-to-t from-background via-background/40 to-transparent" />
-
-        {/* Category badge overlaid on image */}
-        <div className="absolute bottom-6 left-4 sm:left-8 lg:left-16">
-          <span className="inline-block px-3 py-1 bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-widest rounded-sm">
-            {article.category}
-          </span>
+    <main className="min-h-screen bg-background pt-14 sm:pt-16">
+      {/* Editorial cover image */}
+      <header className="border-b border-border/70 bg-surface-deep">
+        <div className="mx-auto max-w-7xl px-4 pb-5 pt-4 sm:px-6 sm:pb-7 sm:pt-6 lg:px-8">
+          <div className="relative aspect-[16/9] overflow-hidden rounded-md bg-surface-raised sm:aspect-[16/8] lg:aspect-[16/7]">
+            <Image
+              src={article.image ?? "/placeholder.svg?height=720&width=1280"}
+              alt={article.title}
+              fill
+              priority
+              sizes="(max-width: 1280px) 100vw, 1280px"
+              className="object-cover"
+            />
+          </div>
         </div>
-      </div>
+      </header>
 
       {/* Article body */}
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-[10px] text-muted-foreground mb-6" aria-label="Breadcrumb">
           <Link
-            href={`/${locale}`}
+            href="/"
             className="flex items-center gap-1 hover:text-foreground transition-colors font-bold uppercase tracking-wider"
           >
             <ChevronLeft className="w-3 h-3" />
             Back to Home
           </Link>
         </nav>
+
+        <span className="mb-4 inline-flex bg-primary px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-primary-foreground">
+          {article.category}
+        </span>
 
         {/* Meta row */}
         <div className="flex items-center gap-3 text-[10px] sm:text-xs text-muted-foreground mb-4 flex-wrap">
@@ -161,7 +161,7 @@ export function NewsArticleDetail({ article, locale }: NewsArticleDetailProps) {
         </div>
 
         {/* Excerpt */}
-        <p className="text-base sm:text-lg text-foreground font-medium leading-relaxed mb-8 border-l-2 border-primary pl-4">
+        <p className="mb-8 rounded-md border border-border/70 bg-secondary/40 p-4 text-base font-medium leading-relaxed text-foreground sm:p-5 sm:text-lg">
           {article.excerpt}
         </p>
 
@@ -199,7 +199,7 @@ export function NewsArticleDetail({ article, locale }: NewsArticleDetailProps) {
         {/* Back link */}
         <div className="mt-10">
           <Link
-            href={`/${locale}`}
+            href="/"
             className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-primary hover:text-primary/80 transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
