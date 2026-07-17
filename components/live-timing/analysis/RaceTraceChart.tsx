@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-import { fetchLiveTiming } from "@/lib/live-timing/api"
+import { subscribeLiveTiming } from "@/lib/live-timing/api"
 import { parseRaceTraceSnapshot } from "@/lib/live-timing/parsers"
 import type { RaceTracePoint } from "@/lib/live-timing/types"
 
@@ -57,10 +57,7 @@ export function RaceTraceChart({ limit }: Props) {
   const sampleCounterRef = useRef(0)
 
   useEffect(() => {
-    async function load() {
-      const rawState = await fetchLiveTiming()
-      if (!rawState) return
-
+    function load(rawState: Parameters<typeof parseRaceTraceSnapshot>[0]) {
       const snapshot = parseRaceTraceSnapshot(rawState)
       if (snapshot.length === 0) return
 
@@ -93,9 +90,7 @@ export function RaceTraceChart({ limit }: Props) {
       })
     }
 
-    load()
-    const intervalId = setInterval(load, POLLING_MS)
-    return () => clearInterval(intervalId)
+    return subscribeLiveTiming(load, POLLING_MS)
   }, [])
 
   const selectedDrivers = useMemo(() => {

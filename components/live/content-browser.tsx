@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useLocale } from "next-intl"
 import { Search, Play, Loader2, MapPin, Clock, ChevronRight, Film, Trophy, BarChart3 } from "lucide-react"
+import Image from "next/image"
 import { F1TVPlayer } from "./f1tv-player"
 import { MultiCamSelector, type CameraChannel } from "./multi-cam-selector"
 import type { F1TVPlaybackStream as StreamInfo } from "@/lib/f1tv/playback"
@@ -374,10 +375,11 @@ export function ContentBrowser({ initialMeetingUri }: ContentBrowserProps = {}) 
           >
             <div className="aspect-video bg-zinc-800 relative">
               {meeting.pictureUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={`https://f1tv.formula1.com/image-resizer/image/${meeting.pictureUrl}?w=640&h=360&q=HI&o=L`}
                   alt={meeting.title}
+                  fill
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                   className="w-full h-full object-cover"
                 />
               )}

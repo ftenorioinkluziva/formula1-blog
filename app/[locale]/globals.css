@@ -44,64 +44,70 @@
 }
 
 :root {
-  /* F1-inspired dark theme — always dark */
-  --background: #0f0f0f;
-  --foreground: #f0f0f0;
-  --card: #1a1a1a;
-  --card-foreground: #f0f0f0;
-  --popover: #1a1a1a;
-  --popover-foreground: #f0f0f0;
-  --primary: #e10600;
-  --primary-foreground: #ffffff;
-  --secondary: #262626;
-  --secondary-foreground: #f0f0f0;
-  --muted: #1e1e1e;
-  --muted-foreground: #a0a0a0;
-  --accent: #e10600;
-  --accent-foreground: #ffffff;
-  --destructive: #e10600;
-  --destructive-foreground: #ffffff;
-  --border: #2a2a2a;
-  --input: #2a2a2a;
-  --ring: #e10600;
-  --chart-1: #e10600;
-  --chart-2: #00d2be;
-  --chart-3: #ff8700;
-  --chart-4: #0600ef;
-  --chart-5: #006f62;
-  --status-success: #27ae60;
-  --status-danger: #e74c3c;
-  --status-warning: #f1c40f;
-  --status-orange: #f39c12;
-  --status-info: #3498db;
-  --status-purple: #9b59b6;
-  --status-vsc: #e67e22;
-  --status-vsc-ending: #d35400;
-  --telemetry-rpm: #f59e0b;
-  --telemetry-throttle: #22c55e;
-  --telemetry-brake: #ef4444;
-  --telemetry-radio: #a855f7;
-  --tire-soft: #ef4444;
-  --tire-medium: #eab308;
-  --tire-hard: #d1d5db;
-  --tire-intermediate: #22c55e;
-  --tire-wet: #3b82f6;
-  --tire-unknown: #6b7280;
-  --stint-fallback-1: #3b82f6;
-  --stint-fallback-2: #ef4444;
-  --stint-fallback-3: #eab308;
-  --stint-fallback-4: #22c55e;
-  --stint-fallback-5: #a855f7;
-  --stint-fallback-6: #f97316;
+  /* Pit Wall Desk palette, expressed in perceptual OKLCH tokens. */
+  --background: oklch(14% 0.01 250);
+  --foreground: oklch(95% 0.01 95);
+  --card: oklch(20% 0.012 250);
+  --card-foreground: oklch(95% 0.01 95);
+  --popover: oklch(20% 0.012 250);
+  --popover-foreground: oklch(95% 0.01 95);
+  --primary: oklch(57% 0.22 29);
+  --primary-foreground: oklch(98% 0.005 95);
+  --secondary: oklch(26% 0.012 250);
+  --secondary-foreground: oklch(95% 0.01 95);
+  --muted: oklch(22% 0.012 250);
+  --muted-foreground: oklch(70% 0.018 250);
+  --accent: oklch(57% 0.22 29);
+  --accent-foreground: oklch(98% 0.005 95);
+  --destructive: oklch(57% 0.22 29);
+  --destructive-foreground: oklch(98% 0.005 95);
+  --border: oklch(31% 0.015 250);
+  --input: oklch(31% 0.015 250);
+  --ring: oklch(57% 0.22 29);
+  --chart-1: oklch(57% 0.22 29);
+  --chart-2: oklch(77% 0.15 170);
+  --chart-3: oklch(74% 0.17 60);
+  --chart-4: oklch(50% 0.22 275);
+  --chart-5: oklch(47% 0.11 165);
+  --status-success: oklch(72% 0.16 150);
+  --status-danger: oklch(63% 0.19 25);
+  --status-warning: oklch(82% 0.16 90);
+  --status-orange: oklch(75% 0.17 65);
+  --status-info: oklch(68% 0.15 235);
+  --status-purple: oklch(67% 0.17 310);
+  --status-vsc: oklch(70% 0.17 55);
+  --status-vsc-ending: oklch(59% 0.17 45);
+  --telemetry-rpm: oklch(78% 0.16 85);
+  --telemetry-throttle: oklch(72% 0.16 150);
+  --telemetry-brake: oklch(63% 0.19 25);
+  --telemetry-radio: oklch(67% 0.19 310);
+  --tire-soft: oklch(63% 0.19 25);
+  --tire-medium: oklch(82% 0.16 90);
+  --tire-hard: oklch(86% 0.01 250);
+  --tire-intermediate: oklch(72% 0.16 150);
+  --tire-wet: oklch(68% 0.15 235);
+  --tire-unknown: oklch(55% 0.02 250);
+  --stint-fallback-1: var(--tire-wet);
+  --stint-fallback-2: var(--tire-soft);
+  --stint-fallback-3: var(--tire-medium);
+  --stint-fallback-4: var(--tire-intermediate);
+  --stint-fallback-5: var(--telemetry-radio);
+  --stint-fallback-6: oklch(72% 0.17 65);
+  --surface-deep: oklch(11% 0.01 250);
+  --surface-raised: oklch(24% 0.012 250);
+  --player-background: oklch(4% 0.005 250);
+  --player-foreground: oklch(98% 0.005 95);
+  --brand-whatsapp: oklch(74% 0.18 150);
+  --brand-telegram: oklch(68% 0.16 235);
   --radius: 0.5rem;
-  --sidebar: #111111;
-  --sidebar-foreground: #f0f0f0;
-  --sidebar-primary: #e10600;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #262626;
-  --sidebar-accent-foreground: #f0f0f0;
-  --sidebar-border: #2a2a2a;
-  --sidebar-ring: #e10600;
+  --sidebar: var(--surface-deep);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--secondary);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
 }
 
 @theme inline {
@@ -131,6 +137,16 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-status-success: var(--status-success);
+  --color-status-danger: var(--status-danger);
+  --color-status-warning: var(--status-warning);
+  --color-status-info: var(--status-info);
+  --color-surface-deep: var(--surface-deep);
+  --color-surface-raised: var(--surface-raised);
+  --color-player-background: var(--player-background);
+  --color-player-foreground: var(--player-foreground);
+  --color-brand-whatsapp: var(--brand-whatsapp);
+  --color-brand-telegram: var(--brand-telegram);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -175,6 +191,18 @@
 
 .animate-scroll:hover {
   animation-play-state: paused;
+}
+
+/* Respect users who ask for less motion while keeping state changes usable. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Hide scrollbar for tab overflow on mobile */

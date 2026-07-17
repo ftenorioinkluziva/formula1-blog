@@ -111,6 +111,7 @@
     "drizzle-kit": "^0.31.9",
     "eslint": "^9.39.4",
     "eslint-config-next": "16.1.6",
+    "eslint-plugin-react-hooks": "7.1.1",
     "postcss": "^8.5",
     "tailwindcss": "^4.2.0",
     "tsx": "^4.21.0",

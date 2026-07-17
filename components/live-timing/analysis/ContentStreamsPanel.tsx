@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { fetchLiveTiming } from "@/lib/live-timing/api"
+import { subscribeLiveTiming } from "@/lib/live-timing/api"
 import { parseSessionData } from "@/lib/live-timing/parsers"
 import type { ContentStream } from "@/lib/live-timing/types"
 
@@ -127,15 +127,8 @@ export function ContentStreamsPanel() {
   const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
-    async function load() {
+    function load(raw: Parameters<typeof parseSessionData>[0]) {
       try {
-        const raw = await fetchLiveTiming()
-        if (!raw) {
-          setLoadError("Não foi possível consultar dados de live timing")
-          setHasData(false)
-          return
-        }
-
         const parsed = parseSessionData(raw)
         const all = [...parsed.streams, ...parsed.audioStreams]
         setStreams(parsed.streams)
@@ -147,9 +140,7 @@ export function ContentStreamsPanel() {
         setHasData(false)
       }
     }
-    load()
-    const id = setInterval(load, POLLING_MS)
-    return () => clearInterval(id)
+    return subscribeLiveTiming(load, POLLING_MS)
   }, [])
 
   const allStreams = [...streams, ...audioStreams]

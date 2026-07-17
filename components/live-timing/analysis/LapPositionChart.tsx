@@ -11,7 +11,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts"
-import { fetchLiveTiming } from "@/lib/live-timing/api"
+import { subscribeLiveTiming } from "@/lib/live-timing/api"
 import { parseLapSeries } from "@/lib/live-timing/parsers"
 import type { DriverLapSeries } from "@/lib/live-timing/types"
 
@@ -22,9 +22,7 @@ export function LapPositionChart() {
   const [fullNameByTla, setFullNameByTla] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    async function load() {
-      const raw = await fetchLiveTiming()
-      if (!raw) return
+    function load(raw: Parameters<typeof parseLapSeries>[0]) {
       const parsedSeries = parseLapSeries(raw)
       parsedSeries.sort((a, b) => {
         const aCurrentPosition = a.laps[a.laps.length - 1]?.position || 99
@@ -44,9 +42,7 @@ export function LapPositionChart() {
       }
       setFullNameByTla(map)
     }
-    load()
-    const id = setInterval(load, POLLING_MS)
-    return () => clearInterval(id)
+    return subscribeLiveTiming(load, POLLING_MS)
   }, [])
 
   if (series.length === 0) {

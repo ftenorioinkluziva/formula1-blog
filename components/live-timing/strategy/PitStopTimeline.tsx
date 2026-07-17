@@ -2,7 +2,7 @@
 
 import { useLiveTiming } from "../LiveTimingProvider"
 import { parseDriverStints } from "@/lib/live-timing/parsers"
-import { fetchLiveTiming } from "@/lib/live-timing/api"
+import { subscribeLiveTiming } from "@/lib/live-timing/api"
 import { useEffect, useState } from "react"
 import { COMPOUND_COLORS, COMPOUND_SHORT } from "@/lib/live-timing/constants"
 import type { DriverStints } from "@/lib/live-timing/types"
@@ -18,18 +18,13 @@ export function PitStopTimeline({ racingNumber }: Props) {
   const targetDriver = racingNumber || selectedDriverNumber
 
   useEffect(() => {
-    async function loadStints() {
-      const rawState = await fetchLiveTiming()
-      if (!rawState) return
-
+    function loadStints(rawState: Parameters<typeof parseDriverStints>[0]) {
       const allStints = parseDriverStints(rawState)
       const driverStints = allStints.find((s) => s.racingNumber === targetDriver)
       setStints(driverStints || null)
     }
 
-    loadStints()
-    const interval = setInterval(loadStints, 5000)
-    return () => clearInterval(interval)
+    return subscribeLiveTiming(loadStints, 5000)
   }, [targetDriver])
 
   if (!targetDriver || !stints || stints.stints.length === 0) {

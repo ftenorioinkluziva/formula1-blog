@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react"
 import Hls from "hls.js"
-import { Loader2, AlertCircle, Volume2, VolumeX, Maximize, Pause, Play, Settings } from "lucide-react"
+import { Loader2, AlertCircle, Volume2, VolumeX, Maximize, Pause, Play, Settings, MoreHorizontal } from "lucide-react"
 import { getPlaybackLicenseUrl } from "@/lib/f1tv/playback"
 
 interface QualityLevel {
@@ -89,6 +89,7 @@ export function F1TVPlayer({
   const [currentAudioTrackId, setCurrentAudioTrackId] = useState<string | null>(null)
   const [playbackSpeed, setPlaybackSpeed] = useState(1)
   const [showSettings, setShowSettings] = useState(false)
+  const [showMobileTools, setShowMobileTools] = useState(false)
   const [retryKey, setRetryKey] = useState(0)
   const retryCountRef = useRef(0)
   const latestResumeAtRef = useRef(0)
@@ -592,7 +593,7 @@ export function F1TVPlayer({
   }, [showSettings])
 
   return (
-    <div className={`relative bg-black rounded-lg overflow-hidden ${className}`}>
+    <div className={`relative bg-player-background rounded-lg overflow-hidden ${className}`}>
       <video
         ref={videoRef}
         className="w-full h-full object-contain"
@@ -603,13 +604,13 @@ export function F1TVPlayer({
       <div ref={ttmlRef} className="pointer-events-none absolute inset-0 z-10" />
 
       {status === "loading" && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-          <Loader2 className="h-8 w-8 animate-spin text-white" />
+        <div className="absolute inset-0 flex items-center justify-center bg-player-background/60">
+          <Loader2 className="h-8 w-8 animate-spin text-player-foreground" />
         </div>
       )}
 
       {status === "error" && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 gap-2 px-4">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-player-background/80 gap-2 px-4">
           <AlertCircle className="h-8 w-8 text-red-500" />
           <p className="text-red-400 text-sm text-center">{errorMessage}</p>
         </div>
@@ -622,15 +623,16 @@ export function F1TVPlayer({
       )}
 
       {status === "ready" && (
-        <div className={`absolute bottom-0 left-0 right-0 p-2 bg-linear-to-t from-black/80 to-transparent transition-opacity ${(alwaysShowControls || showSettings) ? "opacity-100" : "opacity-0 hover:opacity-100"}`}>
+          <div className={`absolute bottom-0 left-0 right-0 p-2 bg-linear-to-t from-player-background/80 to-transparent transition-opacity ${(alwaysShowControls || showSettings) ? "opacity-100" : "opacity-0 hover:opacity-100"}`}>
           {showSettings && (
             <div
               ref={settingsPanelRef}
-              className="absolute bottom-14 right-2 z-20 bg-zinc-900/95 border border-zinc-700 rounded-lg overflow-hidden min-w-52.5 shadow-xl"
+              className="absolute bottom-20 left-2 right-2 z-20 overflow-hidden rounded-lg border border-zinc-700 bg-zinc-900/95 shadow-xl sm:bottom-14 sm:left-auto sm:right-2 sm:min-w-52.5"
             >
               <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-800">
                 <span className="text-zinc-400 text-[11px] font-medium">Video Quality</span>
                 <select
+                  aria-label="Video quality"
                   value={currentQuality}
                   onChange={(e) => handleQualityChange(Number(e.target.value))}
                   className="bg-zinc-800 text-zinc-100 text-[11px] rounded px-1.5 py-0.5 outline-none cursor-pointer border-0"
@@ -645,6 +647,7 @@ export function F1TVPlayer({
               <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-800">
                 <span className="text-zinc-400 text-[11px] font-medium">Speed</span>
                 <select
+                  aria-label="Playback speed"
                   value={playbackSpeed}
                   onChange={(e) => handleSpeedChange(Number(e.target.value))}
                   className="bg-zinc-800 text-zinc-100 text-[11px] rounded px-1.5 py-0.5 outline-none cursor-pointer border-0"
@@ -659,6 +662,7 @@ export function F1TVPlayer({
                 <div className="flex items-center justify-between px-4 py-2.5">
                   <span className="text-zinc-400 text-[11px] font-medium">Audio Track</span>
                   <select
+                    aria-label="Audio track"
                     value={currentAudioTrackId ?? ""}
                     onChange={(e) => handleAudioTrackChange(e.target.value)}
                     className="bg-zinc-800 text-zinc-100 text-[11px] rounded px-1.5 py-0.5 outline-none cursor-pointer border-0 max-w-27.5"
@@ -677,6 +681,7 @@ export function F1TVPlayer({
               {formatTime(currentTime)}
             </span>
             <input
+              aria-label="Video position"
               type="range"
               min={0}
               max={duration > 0 ? duration : 0}
@@ -691,18 +696,75 @@ export function F1TVPlayer({
             </span>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="mb-2 flex flex-wrap items-center gap-1 sm:hidden">
             <button
+              type="button"
+              onClick={togglePlay}
+              aria-label={isPlaying ? "Pause video" : "Play video"}
+              className="inline-flex min-h-10 min-w-10 items-center justify-center rounded bg-primary p-2 text-primary-foreground hover:bg-primary/90"
+            >
+              {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+            </button>
+            <button
+              type="button"
+              aria-expanded={showMobileTools}
+              aria-controls="mobile-player-tools"
+              aria-label="More playback controls"
+              onClick={() => setShowMobileTools((visible) => !visible)}
+              className={`inline-flex min-h-10 min-w-10 items-center justify-center rounded p-2 text-zinc-200 hover:bg-white/10 ${showMobileTools ? "bg-white/10 text-white" : ""}`}
+            >
+              <MoreHorizontal className="h-5 w-5" />
+            </button>
+            <span className="text-[10px] text-zinc-400">More controls</span>
+          </div>
+
+          {showMobileTools && (
+            <div id="mobile-player-tools" className="mb-2 grid grid-cols-4 gap-1 rounded border border-white/10 bg-black/60 p-1 sm:hidden">
+              {([-10, -1, 1, 10] as const).map((seconds) => (
+                <button
+                  key={seconds}
+                  type="button"
+                  aria-label={`${seconds < 0 ? "Seek back" : "Seek forward"} ${Math.abs(seconds)} seconds`}
+                  onClick={() => stepBy(seconds)}
+                  className="min-h-10 rounded px-2 py-2 text-[11px] font-medium tabular-nums text-zinc-200 hover:bg-white/10"
+                >
+                  {seconds > 0 ? `+${seconds}s` : `${seconds}s`}
+                </button>
+              ))}
+              {onSyncOffsetChange !== undefined && (
+                <>
+                  {([-0.5, -0.1, 0.1, 0.5] as const).map((seconds) => (
+                    <button
+                      key={seconds}
+                      type="button"
+                      aria-label={`Adjust sync offset by ${seconds > 0 ? "plus " : ""}${Math.abs(seconds)} seconds`}
+                      onClick={() => onSyncOffsetChange(Math.round((syncOffsetSeconds ?? 0) + seconds * 10) / 10)}
+                      className="min-h-10 rounded px-2 py-2 text-[11px] font-medium tabular-nums text-blue-300 hover:bg-white/10"
+                    >
+                      {seconds > 0 ? `+${seconds}` : seconds}s
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+          )}
+
+          <div className="hidden items-center gap-1 sm:flex">
+            <button
+              type="button"
+              aria-label="Previous frame"
               onClick={() => { videoRef.current?.pause(); setIsPlaying(false); stepBy(-(1 / 25)) }}
               className="text-[10px] text-zinc-400 hover:text-white px-1 py-1 rounded hover:bg-white/10"
               title="Frame anterior (Shift+←)"
             >
               ◀
             </button>
-            <button onClick={togglePlay} className="text-white hover:text-zinc-300 p-1">
+            <button type="button" onClick={togglePlay} aria-label={isPlaying ? "Pause video" : "Play video"} className="text-white hover:text-zinc-300 p-1">
               {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             </button>
             <button
+              type="button"
+              aria-label="Next frame"
               onClick={() => { videoRef.current?.pause(); setIsPlaying(false); stepBy(1 / 25) }}
               className="text-[10px] text-zinc-400 hover:text-white px-1 py-1 rounded hover:bg-white/10"
               title="Próximo frame (Shift+→)"
@@ -713,6 +775,8 @@ export function F1TVPlayer({
               {([-10, -1] as const).map((s) => (
                 <button
                   key={s}
+                  type="button"
+                  aria-label={`Seek ${s} seconds`}
                   onClick={() => stepBy(s)}
                   className="text-[10px] text-zinc-400 hover:text-white px-1 py-0.5 rounded hover:bg-white/10 tabular-nums"
                 >
@@ -722,6 +786,8 @@ export function F1TVPlayer({
               {([1, 10] as const).map((s) => (
                 <button
                   key={s}
+                  type="button"
+                  aria-label={`Seek forward ${s} seconds`}
                   onClick={() => stepBy(s)}
                   className="text-[10px] text-zinc-400 hover:text-white px-1 py-0.5 rounded hover:bg-white/10 tabular-nums"
                 >
@@ -734,6 +800,8 @@ export function F1TVPlayer({
                 {([-0.5, -0.1] as const).map((s) => (
                   <button
                     key={s}
+                    type="button"
+                    aria-label={`Adjust sync offset by ${s} seconds`}
                     onClick={() => onSyncOffsetChange(Math.round((syncOffsetSeconds ?? 0) + s * 10) / 10)}
                     className="text-[10px] text-blue-400 hover:text-blue-200 px-1 py-0.5 rounded hover:bg-white/10 tabular-nums"
                   >
@@ -746,6 +814,8 @@ export function F1TVPlayer({
                 {([0.1, 0.5] as const).map((s) => (
                   <button
                     key={s}
+                    type="button"
+                    aria-label={`Adjust sync offset by plus ${s} seconds`}
                     onClick={() => onSyncOffsetChange(Math.round((syncOffsetSeconds ?? 0) + s * 10) / 10)}
                     className="text-[10px] text-blue-400 hover:text-blue-200 px-1 py-0.5 rounded hover:bg-white/10 tabular-nums"
                   >
@@ -754,18 +824,23 @@ export function F1TVPlayer({
                 ))}
               </div>
             )}
-            <button onClick={toggleMute} className="text-white hover:text-zinc-300 p-1">
+          </div>
+
+          <div className="flex min-w-0 items-center gap-1">
+            <button type="button" onClick={toggleMute} aria-label={isMuted ? "Unmute video" : "Mute video"} className="text-white hover:text-zinc-300 p-1">
               {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
             </button>
-            <div className="flex-1" />
+            <div className="flex-1 min-w-0" />
             <button
+              type="button"
+              aria-label="Video settings"
               onClick={() => setShowSettings((s) => !s)}
               className={`p-1 transition-colors ${showSettings ? "text-red-400" : "text-white hover:text-zinc-300"}`}
               title="Settings"
             >
               <Settings className="h-4 w-4" />
             </button>
-            <button onClick={toggleFullscreen} className="text-white hover:text-zinc-300 p-1">
+            <button type="button" onClick={toggleFullscreen} aria-label="Toggle fullscreen" className="text-white hover:text-zinc-300 p-1">
               <Maximize className="h-4 w-4" />
             </button>
           </div>

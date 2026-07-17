@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { fetchLiveTiming } from "@/lib/live-timing/api"
+import { subscribeLiveTiming } from "@/lib/live-timing/api"
 import { parseChampionshipPrediction } from "@/lib/live-timing/parsers"
 import type { ChampionshipPredictionEntry } from "@/lib/live-timing/types"
 
@@ -23,10 +23,7 @@ export function ChampionshipPredictionCard() {
   const [noData, setNoData] = useState(false)
 
   useEffect(() => {
-    async function load() {
-      const raw = await fetchLiveTiming()
-      if (!raw) return
-
+    function load(raw: Parameters<typeof parseChampionshipPrediction>[0]) {
       if (raw.ChampionshipPrediction === null || raw.ChampionshipPrediction === undefined) {
         setNoData(true)
         return
@@ -40,9 +37,7 @@ export function ChampionshipPredictionCard() {
         setEntries(parsed)
       }
     }
-    load()
-    const id = setInterval(load, POLLING_MS)
-    return () => clearInterval(id)
+    return subscribeLiveTiming(load, POLLING_MS)
   }, [])
 
   return (

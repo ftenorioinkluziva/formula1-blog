@@ -124,7 +124,7 @@ export function LiveSessionLayout() {
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-red-500" />
           <p className="text-zinc-400 text-sm">Checking for live sessions...</p>
@@ -135,7 +135,7 @@ export function LiveSessionLayout() {
 
   if (status === "error") {
     return (
-      <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3 max-w-md px-4">
           <AlertCircle className="h-8 w-8 text-red-500" />
           <p className="text-red-400 text-sm text-center">{error}</p>
@@ -146,7 +146,7 @@ export function LiveSessionLayout() {
 
   if (status === "no-session") {
     return (
-      <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <WifiOff className="h-8 w-8 text-zinc-600" />
           <p className="text-zinc-400 text-sm">No live session at the moment</p>
@@ -158,7 +158,7 @@ export function LiveSessionLayout() {
 
   return (
     <LiveTimingProvider>
-      <div className="min-h-screen bg-[#0f0f0f] pt-16 pb-4">
+      <div className="min-h-screen bg-background pt-16 pb-4">
         <div className="max-w-480 mx-auto px-2">
           {content && (
             <div className="flex items-center gap-3 mb-2 px-2">

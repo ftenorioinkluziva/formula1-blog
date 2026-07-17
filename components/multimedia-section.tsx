@@ -420,10 +420,11 @@ export function MultimediaSection() {
                           >
                             <div className="relative aspect-video rounded-sm overflow-hidden mb-2.5 sm:mb-3 bg-secondary">
                               {meeting.pictureUrl && (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
+                                <Image
                                   src={`https://f1tv.formula1.com/image-resizer/image/${meeting.pictureUrl}?w=640&h=360&q=HI&o=L`}
                                   alt={meeting.meeting}
+                                  fill
+                                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                                   className="w-full h-full object-cover opacity-70 group-hover:opacity-90 group-hover:scale-105 transition-all duration-300"
                                 />
                               )}

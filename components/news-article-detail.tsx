@@ -42,7 +42,7 @@ function ShareButtons({ title, url }: ShareButtonsProps) {
         href={`https://wa.me/?text=${encodedText}%20${encodedUrl}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-[#25D366] text-white text-[10px] font-bold uppercase tracking-wider hover:bg-[#20bc5a] transition-colors"
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-brand-whatsapp text-player-foreground text-[10px] font-bold uppercase tracking-wider hover:bg-brand-whatsapp/90 transition-colors"
         aria-label="Share on WhatsApp"
       >
         <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current" aria-hidden>
@@ -56,7 +56,7 @@ function ShareButtons({ title, url }: ShareButtonsProps) {
         href={`https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-[#229ED9] text-white text-[10px] font-bold uppercase tracking-wider hover:bg-[#1a8ec2] transition-colors"
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-brand-telegram text-player-foreground text-[10px] font-bold uppercase tracking-wider hover:bg-brand-telegram/90 transition-colors"
         aria-label="Share on Telegram"
       >
         <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current" aria-hidden>

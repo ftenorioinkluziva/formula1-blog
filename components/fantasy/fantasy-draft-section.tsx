@@ -165,7 +165,7 @@ export function FantasyDraftSection({
           </CardContent>
         </Card>
 
-        <Card className="border-zinc-800 bg-[#111111] text-zinc-50" data-testid="fantasy-review-card">
+        <Card className="border-border bg-surface-deep text-foreground" data-testid="fantasy-review-card">
           <CardHeader>
             <CardTitle>{t("review")}</CardTitle>
             <CardDescription className="text-zinc-400">{t("reviewDescription")}</CardDescription>

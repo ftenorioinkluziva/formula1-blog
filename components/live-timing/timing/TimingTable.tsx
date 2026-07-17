@@ -3,7 +3,7 @@
 import { useLiveTiming, useSelectDriver } from "../LiveTimingProvider"
 import { COMPOUND_COLORS, COMPOUND_SHORT } from "@/lib/live-timing/constants"
 import { parseDriverStints } from "@/lib/live-timing/parsers"
-import { fetchLiveTiming } from "@/lib/live-timing/api"
+import { subscribeLiveTiming } from "@/lib/live-timing/api"
 import { formatGapMs, parseLapTimeToMs } from "@/lib/live-timing/formatters"
 import { useEffect, useState } from "react"
 import type { DriverStints } from "@/lib/live-timing/types"
@@ -21,16 +21,12 @@ export function TimingTable({ extended = false, showStints = false }: TimingTabl
   useEffect(() => {
     if (!showStints) return
 
-    async function loadStints() {
-      const rawState = await fetchLiveTiming()
-      if (!rawState) return
+    function loadStints(rawState: Parameters<typeof parseDriverStints>[0]) {
       const stints = parseDriverStints(rawState)
       setAllStints(stints)
     }
 
-    loadStints()
-    const interval = setInterval(loadStints, 5000)
-    return () => clearInterval(interval)
+    return subscribeLiveTiming(loadStints, 5000)
   }, [showStints])
 
   const driversWithStats = drivers.map(d => {

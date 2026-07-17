@@ -69,7 +69,7 @@ function ImagePicker({ value, onChange, apiBase }: ImagePickerProps) {
       {value && (
         <div className="relative w-full h-36 rounded overflow-hidden border border-border bg-card">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={value} alt="preview" className="w-full h-full object-cover" />
+          <img src={value} alt="preview" loading="lazy" decoding="async" className="w-full h-full object-cover" />
           <button
             type="button"
             onClick={() => onChange("")}
@@ -111,7 +111,7 @@ function ImagePicker({ value, onChange, apiBase }: ImagePickerProps) {
                       className={`relative group rounded overflow-hidden border-2 transition-colors ${value === img.imageUrl ? "border-blue-500" : "border-transparent hover:border-muted-foreground"}`}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={img.imageUrl} alt={img.caption ?? ""} className="w-full h-24 object-cover" />
+                      <img src={img.imageUrl} alt={img.caption ?? ""} loading="lazy" decoding="async" className="w-full h-24 object-cover" />
                       <div className="absolute bottom-0 left-0 right-0 bg-background/80 text-xs text-foreground/90 px-1 py-0.5 truncate opacity-0 group-hover:opacity-100 transition-opacity">
                         {img.caption ?? img.galleryTitle}
                       </div>

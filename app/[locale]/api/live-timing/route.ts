@@ -9,6 +9,7 @@ import { getQualifyingBestLapState } from "@/lib/live-timing/persistence/qualify
 import { getQualifyingMiniSectorBestState } from "@/lib/live-timing/persistence/qualifying-mini-sector-best-store"
 
 export const dynamic = "force-dynamic"
+export const runtime = "nodejs"
 
 function parsePositiveInt(value: string | null, fallback: number, max = 200): number {
   if (!value) return fallback

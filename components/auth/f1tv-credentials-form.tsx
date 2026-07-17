@@ -90,7 +90,7 @@ export function F1tvCredentialsForm({ initialEmail, hasPasswordSet }: F1tvCreden
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={loading}
-                className="w-full px-3 py-2 bg-[#0d0d0d] border border-border/80 rounded focus:outline-none focus:border-primary text-sm text-foreground transition-colors disabled:opacity-50"
+                className="w-full px-3 py-2 bg-surface-deep border border-border/80 rounded focus:outline-none focus:border-primary text-sm text-foreground transition-colors disabled:opacity-50"
                 placeholder="f1tv-user@example.com"
               />
             </div>
@@ -105,7 +105,7 @@ export function F1tvCredentialsForm({ initialEmail, hasPasswordSet }: F1tvCreden
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={loading}
-                  className="w-full px-3 py-2 bg-[#0d0d0d] border border-border/80 rounded focus:outline-none focus:border-primary text-sm text-foreground transition-colors disabled:opacity-50"
+                className="w-full px-3 py-2 bg-surface-deep border border-border/80 rounded focus:outline-none focus:border-primary text-sm text-foreground transition-colors disabled:opacity-50"
                   placeholder={hasPasswordSet ? "•••••••• (Saved)" : "Enter password"}
                 />
               </div>

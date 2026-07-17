@@ -144,11 +144,12 @@ export function DriverProfiles() {
                                                 <div className="flex items-center gap-2 mb-2 sm:mb-3">
                                                     <span className="text-[10px] sm:text-xs text-muted-foreground">
                                                         {nationalityFlagImageUrl ? (
-                                                            <img
+                                                            <Image
                                                                 src={nationalityFlagImageUrl}
                                                                 alt={`${driver.nationality} flag`}
+                                                                width={18}
+                                                                height={12}
                                                                 className="inline-block h-3 w-[18px] object-cover rounded-[2px] align-[-1px] mr-1"
-                                                                loading="lazy"
                                                             />
                                                         ) : (
                                                             <span className="emoji-flag mr-1">{nationalityFlag}</span>

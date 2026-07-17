@@ -4,14 +4,13 @@ import { useState, Suspense } from "react"
 // Intentional exception: next-intl doesn't export a useSearchParams wrapper,
 // so importing directly from next/navigation is required.
 import { useSearchParams } from "next/navigation"
-import { useRouter, Link } from "@/lib/i18n/routing"
+import { Link } from "@/lib/i18n/routing"
 import { authClient } from "@/lib/auth-client"
 import { useTranslations } from "next-intl"
 import Image from "next/image"
 
 function SignInForm() {
   const t = useTranslations("auth")
-  const router = useRouter()
   const searchParams = useSearchParams()
   const redirectUrl = searchParams.get("next") || "/"
 
@@ -37,8 +36,8 @@ function SignInForm() {
         // Redirect to next path or fallback to home
         window.location.href = redirectUrl
       }
-    } catch (err: any) {
-      setError(err?.message || "An unexpected error occurred")
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "An unexpected error occurred")
     } finally {
       setLoading(false)
     }
@@ -53,29 +52,33 @@ function SignInForm() {
       )}
 
       <div>
-        <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+        <label htmlFor="sign-in-email" className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
           {t("emailLabel")}
         </label>
         <input
+          id="sign-in-email"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          className="w-full px-3 py-2 bg-[#0d0d0d] border border-border/80 rounded focus:outline-none focus:border-primary text-sm text-foreground transition-colors"
+          autoComplete="email"
+          className="w-full px-3 py-2 bg-surface-deep border border-border/80 rounded focus:outline-none focus:border-primary text-sm text-foreground transition-colors"
           placeholder="admin@example.com"
         />
       </div>
 
       <div>
-        <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+        <label htmlFor="sign-in-password" className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
           {t("passwordLabel")}
         </label>
         <input
+          id="sign-in-password"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          className="w-full px-3 py-2 bg-[#0d0d0d] border border-border/80 rounded focus:outline-none focus:border-primary text-sm text-foreground transition-colors"
+          autoComplete="current-password"
+          className="w-full px-3 py-2 bg-surface-deep border border-border/80 rounded focus:outline-none focus:border-primary text-sm text-foreground transition-colors"
           placeholder="••••••••"
         />
       </div>
@@ -95,13 +98,13 @@ export default function SignInPage() {
   const t = useTranslations("auth")
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center bg-[#0a0a0a] text-foreground overflow-hidden">
+    <div className="relative min-h-screen flex items-center justify-center bg-surface-deep text-foreground overflow-hidden">
       {/* Background decoration */}
       <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-red-600/5 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full bg-red-600/5 blur-[120px] pointer-events-none" />
 
       {/* Main card */}
-      <div className="relative z-10 w-full max-w-md px-6 py-12 sm:px-8 bg-[#111111]/80 backdrop-blur-md border border-border/40 rounded-lg shadow-2xl">
+      <div className="relative z-10 w-full max-w-md px-6 py-12 sm:px-8 bg-sidebar/80 backdrop-blur-md border border-border/40 rounded-lg shadow-2xl">
         <div className="flex flex-col items-center mb-8">
           <Link href="/">
             <Image

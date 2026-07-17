@@ -17,13 +17,13 @@ const SubSection = ({ title, children }: { title: string; children: React.ReactN
 )
 
 const Code = ({ children }: { children: string }) => (
-  <pre className="bg-black border border-gray-800 rounded-lg p-4 overflow-x-auto">
+  <pre className="bg-player-background border border-border rounded-lg p-4 overflow-x-auto">
     <code className="text-sm text-gray-300 font-mono">{children}</code>
   </pre>
 )
 
 const Field = ({ name, type, desc, example }: { name: string; type: string; desc: string; example?: string }) => (
-  <div className="border-l-2 border-red-500 pl-4 py-2 mb-3 bg-[#1a1a1a] rounded-r">
+  <div className="border border-primary/40 pl-4 py-2 mb-3 bg-card rounded-r">
     <div className="flex items-baseline gap-2 mb-1">
       <code className="text-yellow-400 font-mono font-bold">{name}</code>
       <span className="text-gray-600">:</span>
@@ -61,7 +61,7 @@ const TOC = [
 
 export default function ApiDocsPage(): JSX.Element {
   return (
-    <main className="min-h-screen bg-[#0f0f0f] pt-20 pb-24">
+    <main className="min-h-screen bg-background pt-20 pb-24">
       <div className="max-w-7xl mx-auto px-4">
         <div className="mb-12">
           <div className="flex items-center gap-2 mb-2">
@@ -75,7 +75,7 @@ export default function ApiDocsPage(): JSX.Element {
           <p className="text-gray-400 text-lg max-w-3xl">
             Documentação da API interna de Live Timing baseada em SignalR. Acesse snapshots normalizados do feed oficial da Fórmula 1.
           </p>
-          <div className="mt-4 flex items-center gap-2 bg-[#1a1a1a] border border-gray-800 rounded-lg px-4 py-2 w-fit">
+          <div className="mt-4 flex items-center gap-2 bg-card border border-border rounded-lg px-4 py-2 w-fit">
             <span className="w-2 h-2 rounded-full bg-green-400" />
             <code className="text-gray-400 text-sm font-mono">/[locale]/api/live-timing</code>
           </div>
@@ -83,7 +83,7 @@ export default function ApiDocsPage(): JSX.Element {
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           <aside className="lg:col-span-1">
-            <nav className="sticky top-24 bg-[#1a1a1a] border border-gray-800 rounded-lg p-4">
+            <nav className="sticky top-24 bg-card border border-border rounded-lg p-4">
               <h3 className="text-white font-bold mb-3 text-sm uppercase tracking-wide">Conteúdo</h3>
               <ul className="space-y-2">
                 {TOC.map((item) => (
@@ -107,15 +107,15 @@ export default function ApiDocsPage(): JSX.Element {
                 O navegador nunca acessa F1MV/MultiViewer nem endpoints locais externos.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-[#1a1a1a] border border-gray-800 rounded-lg p-4">
+              <div className="bg-card border border-border rounded-lg p-4">
                   <div className="text-red-500 font-bold text-lg mb-1">SignalR</div>
                   <div className="text-gray-400 text-sm">Feed oficial normalizado</div>
                 </div>
-                <div className="bg-[#1a1a1a] border border-gray-800 rounded-lg p-4">
+              <div className="bg-card border border-border rounded-lg p-4">
                   <div className="text-green-500 font-bold text-lg mb-1">Tempo Real</div>
                   <div className="text-gray-400 text-sm">Snapshot compartilhado no servidor</div>
                 </div>
-                <div className="bg-[#1a1a1a] border border-gray-800 rounded-lg p-4">
+              <div className="bg-card border border-border rounded-lg p-4">
                   <div className="text-blue-500 font-bold text-lg mb-1">API interna</div>
                   <div className="text-gray-400 text-sm">Acesso pelo mesmo origin</div>
                 </div>

@@ -351,7 +351,7 @@ export default function AdminMultimediaGalleriesPage() {
                     <div className="h-14 w-20 shrink-0 overflow-hidden rounded bg-secondary">
                       {gallery.coverImageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={gallery.coverImageUrl} alt="" className="h-full w-full object-cover" />
+                        <img src={gallery.coverImageUrl} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
                       ) : (
                         <div className="flex h-full items-center justify-center text-xs text-muted-foreground/80">sem capa</div>
                       )}
@@ -451,7 +451,7 @@ export default function AdminMultimediaGalleriesPage() {
                 {galleryForm.coverImageUrl && (
                   <div className="mt-3 h-44 max-w-md overflow-hidden rounded border border-border bg-card">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={galleryForm.coverImageUrl} alt="Prévia da capa" className="h-full w-full object-cover" />
+                    <img src={galleryForm.coverImageUrl} alt="Prévia da capa" loading="lazy" decoding="async" className="h-full w-full object-cover" />
                   </div>
                 )}
 
@@ -520,7 +520,7 @@ export default function AdminMultimediaGalleriesPage() {
                           <div key={image.id} className="grid gap-3 rounded border border-border bg-card p-3 md:grid-cols-[160px_1fr_auto]">
                             <div className="h-28 overflow-hidden rounded bg-secondary">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={form.imageUrl} alt={form.caption || "Imagem da galeria"} className="h-full w-full object-cover" />
+                              <img src={form.imageUrl} alt={form.caption || "Imagem da galeria"} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                             </div>
                             <div className="grid gap-2">
                               <input

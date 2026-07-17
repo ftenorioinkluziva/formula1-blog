@@ -1,8 +1,8 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-import type { LiveTimingState } from "@/lib/live-timing/types"
-import { fetchLiveTiming, shouldPollLiveTiming } from "@/lib/live-timing/api"
+import type { F1LiveTimingRawState, LiveTimingState } from "@/lib/live-timing/types"
+import { subscribeLiveTiming } from "@/lib/live-timing/api"
 import {
   parseDriverData,
   parseWeatherData,
@@ -59,31 +59,12 @@ export function LiveTimingProvider({
   }
 
   useEffect(() => {
-    let mounted = true
-    let pollingInterval: ReturnType<typeof setInterval> | null = null
-    let checkInterval: ReturnType<typeof setInterval> | null = null
-    let currentPollingMs = pollingIntervalProp ?? POLLING_INTERVAL
-
-    async function update() {
-      const data = await fetchLiveTiming()
-      if (!data || !mounted) return
+    function update(data: F1LiveTimingRawState) {
       
       const drivers = parseDriverData(data)
       const radioCaptures = parseRadioCaptures(data)
       const leaderNumber = drivers[0]?.racingNumber || null
       const sessionState = parseSessionState(data)
-      const isSessionActive = sessionState?.status === 'Started'
-
-      // Determine interval based on session state
-      const nextInterval = isSessionActive ? POLLING_INTERVAL : 60 * 1000 // 200ms if active, 1min if upcoming
-      
-      // Adjust interval if it changed
-      if (nextInterval !== currentPollingMs && pollingInterval) {
-        currentPollingMs = nextInterval
-        clearInterval(pollingInterval)
-        pollingInterval = setInterval(update, currentPollingMs)
-      }
-
       setState(prev => ({
         ...prev,
         drivers,
@@ -104,38 +85,8 @@ export function LiveTimingProvider({
       }))
     }
 
-    async function checkPollingAndUpdate() {
-      const shouldPoll = await shouldPollLiveTiming()
-      
-      if (!shouldPoll) {
-        // No session within 1 hour window — stop polling
-        if (pollingInterval) {
-          clearInterval(pollingInterval)
-          pollingInterval = null
-        }
-        return
-      }
-
-      // Session within 1 hour — start or continue polling
-      if (!pollingInterval) {
-        // First time: do immediate update, then start interval
-        await update()
-        pollingInterval = setInterval(update, currentPollingMs)
-      }
-    }
-
-    // Initial check
-    checkPollingAndUpdate()
-
-    // Check every 5 minutes if we should start/stop polling
-    checkInterval = setInterval(checkPollingAndUpdate, 5 * 60 * 1000)
-
-    return () => {
-      mounted = false
-      if (pollingInterval) clearInterval(pollingInterval)
-      if (checkInterval) clearInterval(checkInterval)
-    }
-  }, [])
+    return subscribeLiveTiming(update, pollingIntervalProp ?? POLLING_INTERVAL)
+  }, [pollingIntervalProp])
 
   return (
     <LiveTimingContext.Provider value={{ ...state, setSelectedDriver }}>

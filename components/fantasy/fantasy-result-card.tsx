@@ -33,7 +33,7 @@ export function FantasyResultCard({ result, lockStatus }: Props) {
   }
 
   return (
-    <Card className="border-zinc-800 bg-[#111111] text-zinc-50" data-testid="fantasy-result-card">
+    <Card className="border-border bg-surface-deep text-foreground" data-testid="fantasy-result-card">
       <CardHeader>
         <CardTitle>{t("title")}</CardTitle>
         <CardDescription className="text-zinc-400">{t("description")}</CardDescription>

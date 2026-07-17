@@ -17,6 +17,13 @@ let noSessionBackoffUntil = 0
 let lastNextSessionCheckAt = 0
 let cachedNextSession: { minutesUntil: number; hasUpcomingSession: boolean } | null = null
 
+type LiveTimingSubscriber = (data: F1LiveTimingRawState) => void
+
+const liveTimingSubscribers = new Map<LiveTimingSubscriber, number>()
+let liveTimingPollTimer: ReturnType<typeof setTimeout> | null = null
+let liveTimingPollInFlight = false
+let liveTimingVisibilityListenerAttached = false
+
 function isTemporaryUnavailable(status: number): boolean {
   return status === 429 || status === 502 || status === 503 || status === 504
 }
@@ -171,4 +178,80 @@ export async function fetchLiveTiming(): Promise<F1LiveTimingRawState | null> {
   })()
 
   return inFlightRequest
+}
+
+function getLiveTimingPollInterval(): number {
+  return Math.min(...liveTimingSubscribers.values())
+}
+
+function scheduleLiveTimingPoll(delayMs: number): void {
+  if (liveTimingPollTimer !== null || liveTimingSubscribers.size === 0) return
+
+  liveTimingPollTimer = setTimeout(() => {
+    liveTimingPollTimer = null
+    void runLiveTimingPoll()
+  }, delayMs)
+}
+
+async function runLiveTimingPoll(): Promise<void> {
+  if (liveTimingSubscribers.size === 0 || liveTimingPollInFlight) return
+
+  if (document.visibilityState === "hidden") {
+    scheduleLiveTimingPoll(1000)
+    return
+  }
+
+  liveTimingPollInFlight = true
+  try {
+    const data = await fetchLiveTiming()
+    if (data) {
+      for (const subscriber of liveTimingSubscribers.keys()) {
+        try {
+          subscriber(data)
+        } catch (error) {
+          console.error("[live-timing] subscriber failed:", error)
+        }
+      }
+    }
+  } finally {
+    liveTimingPollInFlight = false
+    scheduleLiveTimingPoll(getLiveTimingPollInterval())
+  }
+}
+
+export function subscribeLiveTiming(
+  subscriber: LiveTimingSubscriber,
+  intervalMs = 1000,
+): () => void {
+  liveTimingSubscribers.set(subscriber, Math.max(200, intervalMs))
+
+  if (liveTimingPollTimer !== null) {
+    clearTimeout(liveTimingPollTimer)
+    liveTimingPollTimer = null
+  }
+
+  if (!liveTimingVisibilityListenerAttached) {
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        if (liveTimingPollTimer !== null) {
+          clearTimeout(liveTimingPollTimer)
+          liveTimingPollTimer = null
+        }
+        void runLiveTimingPoll()
+      }
+    })
+    liveTimingVisibilityListenerAttached = true
+  }
+
+  if (liveTimingPollTimer === null && !liveTimingPollInFlight) {
+    void runLiveTimingPoll()
+  }
+
+  return () => {
+    liveTimingSubscribers.delete(subscriber)
+    if (liveTimingSubscribers.size === 0 && liveTimingPollTimer !== null) {
+      clearTimeout(liveTimingPollTimer)
+      liveTimingPollTimer = null
+    }
+  }
 }

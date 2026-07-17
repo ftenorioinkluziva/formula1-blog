@@ -1,7 +1,7 @@
 "use client"
 
 import { Fragment, useEffect, useState } from "react"
-import { fetchLiveTiming } from "@/lib/live-timing/api"
+import { subscribeLiveTiming } from "@/lib/live-timing/api"
 import { parseDriverMiniSectors } from "@/lib/live-timing/parsers"
 import type { DriverMiniSectors } from "@/lib/live-timing/types"
 
@@ -30,16 +30,12 @@ export function MiniSectorGrid() {
   const [drivers, setDrivers] = useState<DriverMiniSectors[]>([])
 
   useEffect(() => {
-    async function load() {
-      const raw = await fetchLiveTiming()
-      if (!raw) return
+    function load(raw: Parameters<typeof parseDriverMiniSectors>[0]) {
       const parsed = parseDriverMiniSectors(raw)
       parsed.sort((a, b) => a.position - b.position)
       setDrivers(parsed)
     }
-    load()
-    const id = setInterval(load, POLLING_MS)
-    return () => clearInterval(id)
+    return subscribeLiveTiming(load, POLLING_MS)
   }, [])
 
   if (drivers.length === 0) {

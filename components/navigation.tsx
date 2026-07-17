@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Menu, X, User as UserIcon, LogOut, Shield, Tv, PlayCircle, BarChart3, Trophy, ChevronDown } from "lucide-react"
+import { Menu, X, User as UserIcon, LogOut, Shield, Tv, BarChart3, Trophy, ChevronDown } from "lucide-react"
 import Image from "next/image"
 import { LanguageSwitcher } from "./language-switcher"
 import { useLocale } from "next-intl"
@@ -31,7 +31,7 @@ export function Navigation() {
 
   const [session, setSession] = useState<{
     authenticated: boolean
-    user?: any
+    user?: { name?: string | null; email?: string | null }
     profile?: { role: string; displayName?: string }
   } | null>(null)
 
@@ -95,7 +95,7 @@ export function Navigation() {
   const isAdminOrEditor = session?.profile?.role === "admin" || session?.profile?.role === "editor"
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0a]/95 backdrop-blur-md border-b border-border/80">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-surface-deep/95 backdrop-blur-md border-b border-border/80">
       <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between px-4 sm:h-16 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center relative z-50">
@@ -131,13 +131,17 @@ export function Navigation() {
 
           {session === null ? (
             // Loading state
-            <div className="h-8 w-16 bg-[#111] animate-pulse rounded" />
+            <div className="h-8 w-16 bg-sidebar animate-pulse rounded" />
           ) : session.authenticated ? (
             // User Dropdown Menu
             <div className="relative" ref={dropdownRef}>
               <button
+                type="button"
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-[#111111] hover:bg-[#1a1a1a] border border-border/85 text-xs font-bold uppercase tracking-wider text-foreground transition-colors cursor-pointer"
+                aria-expanded={dropdownOpen}
+                aria-haspopup="menu"
+                aria-controls="account-menu"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-sidebar hover:bg-card border border-border/85 text-xs font-bold uppercase tracking-wider text-foreground transition-colors cursor-pointer"
               >
                 <UserIcon className="h-3.5 w-3.5 text-primary" />
                 <span className="max-w-[100px] truncate">
@@ -147,7 +151,7 @@ export function Navigation() {
               </button>
 
               {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-56 rounded-md bg-[#111111] border border-border/80 shadow-2xl py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div id="account-menu" className="absolute right-0 mt-2 w-56 rounded-md bg-sidebar border border-border/80 shadow-2xl py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                   <div className="px-4 py-2.5 border-b border-border/60">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Signed in as</p>
                     <p className="text-xs font-bold truncate text-foreground mt-0.5">{session.user?.email}</p>
@@ -161,7 +165,7 @@ export function Navigation() {
                   <Link
                     href="/account"
                     onClick={() => setDropdownOpen(false)}
-                    className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:bg-[#161616] transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                   >
                     <UserIcon className="h-3.5 w-3.5 text-primary" />
                     My Account
@@ -170,7 +174,7 @@ export function Navigation() {
                   <Link
                     href="/live-timing"
                     onClick={() => setDropdownOpen(false)}
-                    className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:bg-[#161616] transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                   >
                     <BarChart3 className="h-3.5 w-3.5 text-primary" />
                     Live Timing
@@ -179,7 +183,7 @@ export function Navigation() {
                   <Link
                     href="/live"
                     onClick={() => setDropdownOpen(false)}
-                    className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:bg-[#161616] transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                   >
                     <Tv className="h-3.5 w-3.5 text-primary" />
                     F1 Live Stream
@@ -194,7 +198,7 @@ export function Navigation() {
                       <Link
                         href="/admin/news"
                         onClick={() => setDropdownOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:bg-[#161616] transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                       >
                         <Shield className="h-3.5 w-3.5 text-primary" />
                         Manage News
@@ -202,7 +206,7 @@ export function Navigation() {
                       <Link
                         href="/admin/fantasy"
                         onClick={() => setDropdownOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:bg-[#161616] transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                       >
                         <Trophy className="h-3.5 w-3.5 text-primary" />
                         Fantasy Admin
@@ -210,7 +214,7 @@ export function Navigation() {
                       <Link
                         href="/admin/f1tv"
                         onClick={() => setDropdownOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:bg-[#161616] transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                       >
                         <Tv className="h-3.5 w-3.5 text-primary" />
                         F1TV Admin
@@ -224,7 +228,7 @@ export function Navigation() {
                       setDropdownOpen(false)
                       handleSignOut()
                     }}
-                    className="w-full flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider text-red-400 hover:text-red-300 hover:bg-[#161616] transition-colors text-left cursor-pointer"
+                    className="w-full flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider text-red-400 hover:text-red-300 hover:bg-secondary transition-colors text-left cursor-pointer"
                   >
                     <LogOut className="h-3.5 w-3.5" />
                     Sign Out
@@ -243,6 +247,7 @@ export function Navigation() {
           )}
 
           <button
+            type="button"
             className="md:hidden text-foreground p-2 relative z-50"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Toggle menu"
@@ -258,6 +263,7 @@ export function Navigation() {
         className={`md:hidden fixed inset-0 z-40 bg-background transition-transform duration-300 ease-in-out ${mobileOpen ? "translate-x-0" : "translate-x-full"
           }`}
         aria-hidden={!mobileOpen}
+        inert={!mobileOpen}
       >
         <nav className="flex flex-col pt-20 px-6 h-full overflow-y-auto pb-safe" aria-label="Mobile navigation">
           {navLinks.map((link, i) => (

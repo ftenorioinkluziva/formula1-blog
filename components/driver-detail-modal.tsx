@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useState } from "react"
+import Image from "next/image"
 import {
     Trophy,
     Target,
@@ -88,11 +89,12 @@ function DriverDetailContent({ driver }: { driver: Driver }) {
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                         <span className="text-xs text-muted-foreground">
                             {nationalityFlagImageUrl ? (
-                                <img
+                                <Image
                                     src={nationalityFlagImageUrl}
                                     alt={`${driver.nationality} flag`}
+                                    width={20}
+                                    height={14}
                                     className="inline-block h-3.5 w-5.5 object-cover rounded-[2px] align-[-1px] mr-1"
-                                    loading="lazy"
                                 />
                             ) : (
                                 <span className="emoji-flag mr-1">{nationalityFlag}</span>
@@ -191,11 +193,12 @@ function DriverDetailContent({ driver }: { driver: Driver }) {
                             </p>
                             <p className="text-sm font-bold text-foreground">
                                 {nationalityFlagImageUrl ? (
-                                    <img
+                                    <Image
                                         src={nationalityFlagImageUrl}
                                         alt={`${driver.nationality} flag`}
+                                        width={24}
+                                        height={16}
                                         className="inline-block h-4 w-6 object-cover rounded-[2px] align-[-1px] mr-1"
-                                        loading="lazy"
                                     />
                                 ) : (
                                     <span className="emoji-flag mr-1">{nationalityFlag}</span>

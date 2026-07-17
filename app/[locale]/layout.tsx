@@ -30,7 +30,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#0f0f0f',
+  themeColor: 'oklch(14% 0.01 250)',
 }
 
 export function generateStaticParams() {

@@ -11,7 +11,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts"
-import { fetchLiveTiming } from "@/lib/live-timing/api"
+import { subscribeLiveTiming } from "@/lib/live-timing/api"
 import { parseWeatherSeries } from "@/lib/live-timing/parsers"
 import type { WeatherSeriesPoint } from "@/lib/live-timing/types"
 
@@ -32,14 +32,10 @@ export function WeatherHistoryChart() {
   const [data, setData] = useState<WeatherSeriesPoint[]>([])
 
   useEffect(() => {
-    async function load() {
-      const raw = await fetchLiveTiming()
-      if (!raw) return
+    function load(raw: Parameters<typeof parseWeatherSeries>[0]) {
       setData(parseWeatherSeries(raw))
     }
-    load()
-    const id = setInterval(load, POLLING_MS)
-    return () => clearInterval(id)
+    return subscribeLiveTiming(load, POLLING_MS)
   }, [])
 
   if (data.length === 0) {
